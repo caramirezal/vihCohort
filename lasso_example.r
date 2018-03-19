@@ -1,14 +1,17 @@
 library(lars)
 library(glmnet)
 library(caret)
+library(dplyr)
 
-data <- read.csv("C08_04paraIL10etc180123.csv",header=TRUE)
+data <- read.csv("data/TablaLPS_IL18_20180217.csv")
 dim(data)
 head(data)
 
 Y1 <- data$DeltaCD4_W52
-X1 <- cbind(data$CD4_S0,data$LPS_pg_ml_W0,data$IL18_pg_ml,data$LeucocitosS0,data$HematocritoS0,
-            data$PlaquetasS0,data$GlucosaS0,data$Acido_uricoS0,data$CD4porcentajeS0,data$CD8_S0,data$CD8porcentajeS0,data$CocCD4_CD8_S0,data$LogCV_S0,data$CD4_S12,data$DeltaCV_S8)
+X1 <- with(data, cbind(CD4_S0,LPS_pg_ml_W0, IL18_pg_ml, LeucocitosS0, 
+                       HematocritoS0, PlaquetasS0, GlucosaS0, Acido_uricoS0, 
+                       CD4porcentajeS0, CD8_S0, CD8porcentajeS0, CocCD4_CD8_S0,
+                       LogCV_S0, CD4_S12, DeltaCV_S8) )
 
 # Simple function lasso regression
 reg1 <- cv.glmnet(X1,Y1)
