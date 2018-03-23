@@ -6,7 +6,7 @@ The aim of this study is to find predictors for the appearence of IRIS Immune Re
 
 ## LASSO implementation
 
-The following image shows the MSE vs lambda values. In the following simulation MSE has a local minimum value. Lambda values varies in every simulation but remains close to a value of ~ 2.5. 
+The following image shows the MSE vs lambda plot. In this simulation MSE has a local minimum value. Lambda values varies in every simulation but remains close to a value of ~ 2.5. 
 
 ![](figures/MSEvsLambda.jpg)
 
