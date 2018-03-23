@@ -1,0 +1,133 @@
+---
+title: "LASSO implementation on VIH cohort data EDA"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+**Background**
+
+In this report LASSO is implemented on a cohort data of patients treated with
+retroviral therapy (ART) with the aim of finding predictors of immune reconstitution inflamatory syndrome (IRIS).
+
+
+**Results**
+
+*Data preprocessing*
+
+
+The raw data set (stored in the TablaLPS_IL18_20180217.csv file) contains 53 observations  and 90 recorded variables. From the raw data the following columns were droped: Patient ID and indexes; Since delta CD4 increase/decrease is the variable *output*,
+variables containing CD4 information were droped; IRIS column was droped since 
+its presence/absence is diagnosed based on CD4 counts. All remaining columns were included in the analysis. The variables included in the analysis are shown in the following output.
+
+```{r}
+data <- read.csv("data/TablaLPS_IL18_20180217.csv")
+
+## preprocessing raw data
+data <- data[,sapply(data, is.numeric)]
+drop <- c("Expediente","IRIS","DeltaCD4_W52","Numero_consecutivo")
+## droping variables containing CD4 pattern 
+drop <- c(drop,grep("CD4",colnames(data),value = TRUE))
+drop <- c(drop,grep("CD8porcen",colnames(data),value = TRUE))
+input <- data[,!(colnames(data)%in%drop)]
+input <- as.matrix(input)
+
+output <- data$DeltaCD4_W52
+iris <- data$IRIS
+colnames(input)
+```
+
+*LASSO*
+
+Next, data were partitioned into train and test sets and LASSO were performed
+in the train set. The following output shows the MSE vs lambda values. In the following simulation MSE has a local minimum value. Lambda values varies in every simulation but remains close to a value of ~ 2.5. 
+
+```{r, message=FALSE}
+library(glmnet)
+library(caret)
+
+set.seed(777)
+
+## Now use: Training and testing sets
+# Split dataframe into training & testing sets
+inTrain <- createDataPartition(output, p = .75, list = FALSE)
+Train   <- input[ inTrain, ] # Training dataset for all model development
+Test    <- input[-inTrain, ] # Final sample for model validation
+
+lasso   <- cv.glmnet(x=Train, y=output[inTrain], nfolds=10,       
+                     type.measure="mse")
+plot(lasso)
+```
+
+In the next code LASSO cross validation is performed. Train and test model fits are shown. From the figure it can be seen that LASSO losely fits training and test data which suggests low overfitting.
+
+```{r}
+predicted.Tr <- predict(lasso,
+                       newx = Train,
+                       s=lasso$lambda.min)
+predicted.Te <- predict(lasso,
+                        newx=Test,
+                        s=lasso$lambda.min)
+
+```
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+plot(predicted.Tr,output[inTrain],
+     pch=20,
+     main = "Train",
+     xlab = "input",
+     ylab = "output")
+abline(0,1,col="red")
+plot(predicted.Te,output[-inTrain],
+     pch=20,
+     main = "Test",
+     xlab = "input",
+     ylab = "output")
+abline(0,1,col="red")
+par(mfrow=c(1,1))
+```
+
+In the next output LASSO coeficients are shown. Coeficients varies from simulation to simulation. But, in general LogCV_S08 is the best ranked variable according to LASSO coeficients.
+
+```{r}
+coef(lasso)
+
+```
+
+In the following piece of code a linear model is fitted on the output DeltaCD4_W52 *vs* the LASSO best ranked variable and other zero valued coeficient variables.
+From the coeficients of this linear model it can be seen that the LASSO best ranked variable are also strong correlated in the linear model when compared to variables with lambda coeficient values equal to zero. 
+
+```{r}
+lm.fit <- lm(DeltaCD4_W52~LPS_pg_ml_W0
+             +LogCV_S08+IL18_pg_ml
+             +TNFalfa_pg_ml_W0
+             +CD8porcentajeS12,
+             data)
+summary(lm.fit)
+```
+The following plot shows LogCV_S08 (the best ranked variable) *vs* the output (DeltaCD4_W52). The points are coloured in blue or black depending whether they belong to patients diagnosed with or without IRIS, respectively. A linear model is fitted which reveals that there is a correlation between both values.  However, it can be seen that the linear model is not useful to classify clinical binary outcomes.
+
+```{r}
+library(ggplot2)
+
+g <- ggplot(data,aes(LogCV_S08,DeltaCD4_W52,colour=IRIS))
+g <- g + geom_point()
+g <- g + geom_smooth(method = "lm")
+plot(g)
+```
+
+**Conclusions**
+
+In the present report LASSO method was implemented in the data from a cohort of ART treated patients with the aim of finding predictors for IRIS. The main results are summarized as follows:
+
+* MSE *vs* lambda behavior in LASSO simulations is somewhat variable, however lambda minimum values are generally closed to ~ 2.2.
+
+* Variables coeficients varies from simulation to simulation. Probably, it would be necessary to run several simulations and keep the average value of each coeficient in order to chose predictors.
+
+* LogCV_S08 is generally the best ranked variable (biggest coeficient).
+
+* The resulting LASSO models are generally well fitted in train and test sets suggesting low overfitting. 
+
+* Strong correlation is found between best ranked variables like LogCV_S08 and the outcome in a linear model. However, it can be seen that a linear model is not able to classify clinical outcomes.
+
