@@ -2,7 +2,7 @@
 
 ## Background
 
-The aim of this study is to find predictors for the appearence of IRIS Immune Reconstitution Inflammatory Syndrome (IRIS) in patients treated con antiretroviral therapy (ART).
+The aim of this study is to find predictors for the appearence of Immune Reconstitution Inflammatory Syndrome (IRIS) in patients treated con antiretroviral therapy (ART).
 
 ## LASSO implementation
 
