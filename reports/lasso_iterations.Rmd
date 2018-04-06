@@ -1,0 +1,114 @@
+---
+title: "LASSO implementation on VIH cohort data EDA (II)"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+**Background**
+
+In this report LASSO is implemented on a cohort data of patients treated with
+retroviral therapy (ART) with the aim of finding predictors of immune reconstitution inflamatory syndrome (IRIS). LASSO analysis is implemented in this report. Variables are more carefully selected and a iterative approach is carried out to chose variables with biggest LASSO coeficients.
+
+
+**Results**
+
+*Data preprocessing*
+
+
+The raw data set (stored in the TablaLPS_IL18_20180217.csv file) contains 53 observations  and 90 recorded variables. The variables included in the analysis are shown in the following output and the code shows the list of removed variables.
+
+```{r}
+data <- read.csv("~/scripts/vihCohort/data/TablaLPS_IL18_20180217.csv")
+
+## preprocessing raw data
+## drop categorical data
+data <- data[,sapply(data, is.numeric)]
+## list of removed variables
+drop <- c("Expediente",
+          "IRIS",
+          "DeltaCD4_W52",
+          "Numero_consecutivo",
+#          "CD4_S24",
+#          "CD4porcentajeS24",
+#          "CocCD4_CD8_S0",
+          "CD8porcentajeS24",
+          "DeltaCD4W52atleast150",
+          "CD4_S52",
+          "CD4TCabove200_W052",
+          "CD4TCabove350_W052")
+input <- data[,!(colnames(data)%in%drop)]
+input <- as.matrix(input)
+
+output <- data$DeltaCD4_W52
+colnames(input)
+```
+
+*LASSO*
+
+Coeficients values are variable between simulations. Hence, it is important
+to asses statistic behavior of the weights of the variables in many
+LASSO simulations. In the next code 1,000 partitions are randomly generated and LASSO is performed under that partitions and the mean coeficient values are calculated. Coeficients with positive values are displayed in the next output.
+
+```{r, message=FALSE}
+library(glmnet)
+library(caret)
+
+res <- numeric(ncol(input)+1)
+n.sim <- 1000
+for (i in 1:n.sim) {
+        inTrain <- createDataPartition(output, p = .75, list = FALSE)
+        Train   <- input[ inTrain, ] 
+        lasso   <- cv.glmnet(x=Train, y=output[inTrain], nfolds=10,       
+                             type.measure="mse")
+        lasso.coef <- coef(lasso)
+        lasso.names <- rownames(lasso.coef)
+        lasso.coef <- as.vector(lasso.coef)
+        names(lasso.coef) <- lasso.names
+        res <- res + lasso.coef
+}
+res <- res/n.sim
+res <- res[res >0 & ! names(res) %in% "(Intercept)"]
+sort(res,decreasing = TRUE)
+```
+
+In the next code the MSE are calculated for the last train and test defined sets. It can be seen bigger values for testing sets which suggests overfitting.
+
+```{r}
+y <- predict(lasso, newx=input[inTrain,], s=lasso$lambda.min)
+Tr_Rsq <- (mean(output[inTrain]-y))^2
+
+y <- predict(lasso, newx=input[-inTrain,], s=lasso$lambda.min)
+Te_Rsq <- (mean(output[-inTrain]-y))^2
+
+c("Train_R^2"=Tr_Rsq,"Test_R^2"=Te_Rsq)
+```
+
+In the next output a linear model was fitted with the top three variables with highest LASSO coeficients are tested in a linear model to find correlation with the output DeltaCD4_W52 and another variable not best ranked LogCV_S0 is shown. Interestingly, the variable with highest LASSO correlation (CocCD4_CD8_S52) is not the variable with highest correlation in the linear model and instead LogCV_S08 is more stringly correlated with output.
+
+```{r}
+lm.fit <- lm(DeltaCD4_W52 ~ CocCD4_CD8_S52
+                            + CocCD4_CD8_S39
+                            + LogCV_S0,
+                            data)
+summary(lm.fit)
+```
+
+In the next plot a linear model of the best ranked variable in LASSO with the output DeltaCD4_W52. It can be seen from the plot that the best LASSO coefficient is also strongly correlated with the output in a linear.
+
+```{r}
+library(ggplot2)
+
+g <- ggplot(data,aes(CocCD4_CD8_S52,DeltaCD4_W52,colour=IRIS))
+g <- g + geom_point()
+g <- g + geom_smooth(method = "lm")
+plot(g)
+```
+
+**Conclusions**
+
+In the present report LASSO method was implemented in the data from a cohort of ART treated patients with the aim of finding predictors for IRIS. Because of the variation already present in LASSO coeficients for every random training partition, statistic behavior was assesed by an iterative procedure.
+The quotient CD4/CD8 on week 39 and 52 are the best ranked variables according to LASSO coeficients followed by LogCV_S0. It can be seen that LASSO is usefull to find variables strongly correlated with the output. The MSE calculated for train and test set for a single simulation suggest overfitting. 
+
+
