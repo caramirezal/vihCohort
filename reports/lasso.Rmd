@@ -1,5 +1,5 @@
 ---
-title: "LASSO implementation on VIH cohort data EDA"
+title: "LASSO implementation on VIH cohort data EDA (II)"
 output:
   pdf_document: default
   html_notebook: default
@@ -22,7 +22,7 @@ variables containing CD4 information were droped; IRIS column was droped since
 its presence/absence is diagnosed based on CD4 counts. All remaining columns were included in the analysis. The variables included in the analysis are shown in the following output.
 
 ```{r}
-data <- read.csv("data/TablaLPS_IL18_20180217.csv")
+data <- read.csv("~/scripts/vihCohort/data/TablaLPS_IL18_20180217.csv")
 
 ## preprocessing raw data
 data <- data[,sapply(data, is.numeric)]
