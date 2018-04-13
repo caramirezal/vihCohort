@@ -6,6 +6,11 @@ output: html_notebook
 En esta etapa es importante empezar mostrando cuales de las variables se incluyen en el análisis para tener claridad. En estas simulaciones incluyo las variables "CD4_S24", "CD4porcentajeS24", "CocCD4_CD8_S0" y "CD8porcentajeS24" siguiendo la sugerencia de Enrique. Estas variables tienen coeficientes positivos usando lasso. En el siguiente output se muestran dichas variables.
 
 ```{r}
+library(glmnet)
+library(caret)
+library(dplyr)
+library(reshape2)
+
 ## preprocessing raw data
 data <- read.csv("~/scripts/vihCohort/data/TablaLPS_IL18_20180217.csv")
 
@@ -47,7 +52,6 @@ As a first step Lambda is optimized using the whole data set to avoid bias.
 
 ```{r}
 ## lasso Lambda optimization
-library(glmnet)
 
 set.seed(33)
 
@@ -64,48 +68,82 @@ lambda.opt <- lasso$lambda.1se
 plot(lasso)
 ```
 
+En el siguiente código se muestra la validación cruzada usando 80%/20% (train/test). Aquí hay dos cosas importantes. Los coeficientes varian mucho de una simulación a otra
 
 ```{r}
 ## lasso cross validation
-library(caret)
-library(dplyr)
 
 ## vector to store coeficients and MSE for trainning and test
 res <- matrix(0,0, length(coef(lasso)))
 colnames(res) <- rownames(coef(lasso))
 MSE.tr <- numeric(0)
 MSE.te <- numeric(0)
+ratio <- numeric(0)
 
 ## lasso iterations
-for (i in 1:100) {
-        ## create partition
-        inTrain <- createDataPartition(output, p = 0.8, list = FALSE)
-        Train   <- input[ inTrain, ] 
-        ## perform lasso
-        lasso   <- cv.glmnet(x=Train, y=output[inTrain])
-        ## obtain coefficients
-        lasso.coef <- coef(lasso)
-        lasso.coef <- as.vector(lasso.coef)
-        res <- rbind(res,lasso.coef)
-        ## obtain mse
-        predicted.tr <- predict(lasso, newx = input[inTrain,], s=lasso$lambda.1se)
-        predicted.te <- predict(lasso, newx = input[-inTrain,], s=lasso$lambda.1se)
-        MSE.tr <- c(MSE.tr,mean((predicted.tr-output[inTrain])^2))
-        MSE.te <- c(MSE.te,mean((predicted.te-output[-inTrain])^2))
+for (p in seq(from=0.8,to = 0.95,by = 0.05)) {
+        for (i in 1:100) {
+                ## create partition
+                inTrain <- createDataPartition(output, p = p, list = FALSE)
+                Train   <- input[ inTrain, ] 
+                Test <- input[-inTrain,]
+                ## perform lasso
+                lasso   <- cv.glmnet(x=Train, y=output[inTrain])
+                ## obtain coefficients
+                lasso.coef <- coef(lasso)
+                lasso.coef <- as.vector(lasso.coef)
+                res <- rbind(res,lasso.coef)
+                ## obtain mse
+                predicted.tr <- predict(lasso, newx = input[inTrain,], s=lambda.opt)
+                predicted.te <- predict(lasso, newx = input[-inTrain,], s=lambda.opt)
+                MSE.tr <- c(MSE.tr,mean((predicted.tr-output[inTrain])^2))
+                MSE.te <- c(MSE.te,mean((predicted.te-output[-inTrain])^2))
+                ratio <- c(ratio,p)
+        }
 }
 
-res <- cbind(res,MSE.tr,MSE.te)
+## transform result matrix to dataframe and add mse column values
+res.df <- as.data.frame(res)
+res.df <- mutate(res.df, MSE.tr=MSE.tr)
+res.df <- mutate(res.df, MSE.te=MSE.te)
+res.df <- mutate(res.df, ratio=as.factor(ratio))
 
-## mean and var calculation
-cv <- data.frame(apply(res,2,mean),
-                 apply(res,2,var))
+mse_train <- aggregate(MSE.tr~as.factor(ratio),res.df,mean)
+mse_test <- aggregate(MSE.te~as.factor(ratio),res.df,mean)
+sd_train <- aggregate(MSE.tr~as.factor(ratio),res.df,sd)
+sd_test <- aggregate(MSE.te~as.factor(ratio),res.df,sd)
 
-names(cv) <- c("cv_mean","cv_var")
-cv <- cv[order(-cv$cv_mean),]
 
-indexes.sort <- order(res[,"MSE.tr"])
-plot(1:nrow(res),log(res[indexes.sort,"MSE.tr"]),col="red")
-points.default(1:nrow(res),log(res[indexes.sort,"MSE.te"]),col="blue")
+plot(as.numeric(paste(mse_test[,1])),mse_test[,2],
+     col="green", pch=20, lwd=3, type = "l",ylim = c(-100,27000),
+     xlab = "train/test", ylab = "MSE", main = "MSE vs train size")
+points(as.numeric(paste(mse_test[,1])),mse_test[,2],
+     col="green", pch=20,cex=1.5)
+arrows(as.numeric(paste(mse_test[,1])),mse_test[,2]-sd_test[,2],
+         as.numeric(paste(mse_test[,1])),mse_test[,2]+sd_test[,2],
+       code = 3,angle = 90,length = 0.05,lwd=1.5)
+par(new=TRUE)
+plot(as.numeric(paste(mse_train[,1])),mse_train[,2],
+               col="red",pch=20,lwd=3,type="l",
+     axes = FALSE, xlab = "", ylab = "")
+points(as.numeric(paste(mse_train[,1])),mse_train[,2],
+       col="red", pch=20,cex=1.5)
+arrows(as.numeric(paste(mse_train[,1])),mse_train[,2]+sd_train[,2],
+       as.numeric(paste(mse_train[,1])),mse_train[,2]-sd_train[,2],
+       code = 3,angle = 90,length = 0.05,lwd=1.5)
+axis(side=4)
+
+
+mse_test[,2]
+sd_test[,2]
 ```
 
 
+```{r}
+## plot MSE for train and test
+mses <- select(res,MSE.tr,MSE.te)
+mses <- melt(mses)
+p <- ggplot(mses, aes(x=variable,y=log(value+1))) + geom_boxplot()
+p <- p + xlab("train vs test") + ylab("MSE") 
+plot(p)
+```
