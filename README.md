@@ -25,3 +25,10 @@ model is not useful to classify clinical binary outcomes.
 
 ![](figures/bestRankedLASSOvariables.jpg)
 
+
+## LASSO cross validation
+
+In the next figure shows the performance of lasso *vs* the train/test ratio. 
+Train (test) MSE curve is shown in red (green). Note that two axis scales are shown. The training (test) curve scale is shown at the left (right).
+
+![](figures/cvVsTrainSize.jpg)
