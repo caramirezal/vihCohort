@@ -220,4 +220,26 @@ for ( i in 1:length(sizes) ) {
         }
 }
 
+library(dplyr)
+library(reshape2)
+library(ggplot2)
 
+results.processed <- as.data.frame(results)
+results.processed <- mutate(results.processed,size=as.factor(size))
+results.processed <- melt(results.processed)
+results.processed <- mutate(results.processed,
+                            size_var=paste(size,variable,sep = ":"))
+results.summary <- aggregate(results.processed$value,
+                               by = list(results.processed$size_var),mean)
+results.summary <- mutate(results.summary,
+                            means=x,
+                            size=gsub(":.*","",Group.1),
+                            technique=gsub(".*:","",Group.1))
+results.summary <- mutate(results.summary,
+                          sd=tapply(results.processed$value,
+                                    results.processed$size_var,
+                                    sd))
+head(results.summary)
+head(results.processed)
+## validation
+sd(results.processed[results.processed$size_var=="42.4:mse_lasso","value"])
