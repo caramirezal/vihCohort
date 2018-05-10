@@ -186,8 +186,7 @@ mse_plot <- ggplot(mse_summary, aes(x=size,y=log(mean),colour=technique)) +
         geom_line() +                                    ## not working
         geom_errorbar(aes(ymin=log(mean-sd),ymax=log(mean+sd)), width=.1) +
         geom_point() +
-        labs(x="Size", y="Log(MSE)",fill="") 
-#+ theme(legend.position="none")                  ## removing legends   
+        labs(x="Size", y="Log(MSE)",fill="")  
 
 
 r_sq_summary <- filter(results.summary,grepl("r_sq",technique))
@@ -197,8 +196,8 @@ r_sq_summary
 r_sq_plot <- ggplot(r_sq_summary, aes(x=size,y=mean,colour=technique)) + 
         geom_line(aes(x=size,y=mean)) + 
         geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.1) + 
-        geom_point() 
-        theme(legend.position = "none")
+        geom_point() +
+        labs(x="Size", y="R^2",fill="")
 
 grid.arrange(mse_plot,r_sq_plot,nrow=1)
 
