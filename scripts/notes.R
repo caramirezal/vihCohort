@@ -129,8 +129,10 @@ n_sims <- 5
 sizes <- c(0.8,0.9,0.95,1)*n
 
 ## matrix to store results of simulations
-results <- matrix(0,length(sizes)*n_sims,4)
-colnames(results) <- c("mse_lasso","r_sq_lasso","mse_ridge","size")
+results <- matrix(0,length(sizes)*n_sims,5)
+colnames(results) <- c("mse_lasso","r_sq_lasso",
+                       "mse_ridge","r_sq_ridge",
+                       "size")
 head(results)
 
 
@@ -197,6 +199,15 @@ for ( i in 1:length(sizes) ) {
                         mse_ridge <- mean((y_predicted_r-output[train])^2)
                 }
                 
+                ## Rigde regression r^2 calculation
+                if ( sizes[i] < 1 ) { ## sizes < 1 uses test data for predict   
+                        r_sq_ridge <- rsq(observed=output[-train],
+                                          predicted=y_predicted_r) 
+                } else {   ## sizes = 1 uses all data to predict
+                        r_sq_ridge <- rsq(observed=output[train],
+                                          predicted=y_predicted_r)
+                }
+                
                 #########################################################
                 ## storing results in results matrix
                 
@@ -204,6 +215,7 @@ for ( i in 1:length(sizes) ) {
                 results[index, "mse_lasso"] <- mse_lasso
                 results[index,"r_sq_lasso"] <- r_sq_lasso
                 results[index,"mse_ridge"] <- mse_ridge
+                results[index,"r_sq_ridge"] <- r_sq_ridge
                 results[index, "size"] <- sizes[i]
         }
 }
