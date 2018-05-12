@@ -1,0 +1,16 @@
+---
+title: "Reconstitución de células T CD4 en una cohorte prospectiva de pacientes con VIH"
+output: html_notebook
+---
+
+### **1. Comparación entre métodos**
+
+Para seleccionar la técnica de aprendizaje estadístico se compararon los métodos de LASSO, Ridge regression y random forest para diversos tamaños del conjunto de entrenamiento (80, 85, 90, 95 y 100 por ciento del total de observaciones). 
+Se realizaron un total de 100 simulaciones para cada método y cada tamaño de conjunto de entrenamiento y se calcularon la media de la suma de los errores (MSE) así como $R^2$ para evaluar el ajuste de cada método.
+Para las simulaciones de LASSO y Ridge regression se utilizaron un nfold de tamaño n - 1, donde n es el número de observaciones total para realizar la validación cruzada. De la validación cruzada se obtuvo el valor óptimo de lambda correspondiente al valor de lambda mínimo (lambda.min). Para las simulaciones de random forest se utilizaron 500 árboles y n/3 variables. En la figura siguiente se muestran el promedio y las desviaciones estándares de los valores de MSE (Figura 1 A) y $R^2$ (Figura 1 B) evaluados en el conjunto de *prueba*. Como se observa en la figura LASSO se desempeña mejor que ridge regression y random forest en cuanto a la exactitud de la predicción en el conjunto de prueba según los valores de MSE (Figura 1 A) y también explica mejor la varianza de los datos de acuerdo con los valores de $R^2$ (Figura 1 B). Se puede ver que Ridge regression tiene un desempeño pobre en estos datos. También se observa que el 90 por ciento del total de observaciones minimiza los valores de MSE y maximiza $R^2$ y por lo tanto se puede tomar como valor óptimo de tamaño del conjunto de prueba. 
+
+![**Figura 1. Comparación entre métodos**. Valores de el logaritomo de MSE (A) y $R^2$ (B) de las simulaciones de LASSO (rojo), Ridge regression (verde) y random forest (azul). Los valores representan el promedio y la desviación estandar de 100 simulaciones. ](../figures/trainSize.jpg)
+
+**Conclusiones**
+
+Se puede ver que...
