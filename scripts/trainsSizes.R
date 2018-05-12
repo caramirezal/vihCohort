@@ -16,6 +16,36 @@ r_sq <- function(observed,predicted) {
         return( 1 - (rss/tss) )
 }
 
+##########################################################################
+## data preprocessing
+
+## reading data
+data <- read.csv("~/scripts/vihCohort/data/TablaLPS_IL18_20180217.csv")
+head(data)
+
+
+## preprocessing raw data
+## drop categorical data
+data <- data[,sapply(data, is.numeric)]
+
+## list of removed variables
+drop <- c("Expediente",
+          "IRIS",
+          "DeltaCD4_W52",
+          "Numero_consecutivo",
+          "CD8porcentajeS24",
+          "CD4_S52")
+
+## removing list of variables
+input <- data[,!(colnames(data)%in%drop)]
+
+## input definition
+input <- as.matrix(input)
+
+## output definition
+output <- data$DeltaCD4_W52
+colnames(input)
+
 
 ##########################################################################
 ## initial parameter definitions
@@ -23,10 +53,10 @@ r_sq <- function(observed,predicted) {
 ## number of observations
 n <- nrow(input)
 ## number of simulations
-n_sims <- 30
+n_sims <- 100
 
 ## train testing sizes
-sizes <- c(0.8,0.9,0.95,1)*n
+sizes <- c(0.8,0.85,0.9,0.95,1)*n
 
 
 ##########################################################################
@@ -39,6 +69,7 @@ colnames(results) <- c("mse_lasso","r_sq_lasso",
                        "mse_forest","r_sq_forest",
                        "size")
 head(results)
+
 
 ## iteration of lasso, ridge, and random forest regression simulations
 for ( i in 1:length(sizes) ) {
@@ -156,6 +187,8 @@ for ( i in 1:length(sizes) ) {
         }
 }
 
+write.csv(results,"../data/trainSizesResults.csv",row.names = FALSE)
+
 #######################################################################
 ## processing results
 
@@ -177,28 +210,34 @@ results.summary
 ############################################################################
 ## plotting results
 
-## selecting mse values
+## plotting mse values
 mse_summary <- filter(results.summary,grepl("mse",technique))
-mse_summary 
+write.csv(mse_summary,file = "../data/mse_summary.csv",row.names = FALSE) 
 
-theme_set(theme_classic())
-mse_plot <- ggplot(mse_summary, aes(x=size,y=log(mean),colour=technique)) +
-        geom_line() +                                    ## not working
+theme_set(theme_bw())
+
+jpeg("../figures/trainSizeMSE.jpg")
+ggplot(mse_summary, aes(x=size,y=log(mean),colour=technique)) +
+        geom_line(size=1.8) +                                    ## not working
         geom_errorbar(aes(ymin=log(mean-sd),ymax=log(mean+sd)), width=.1) +
-        geom_point() +
-        labs(x="Size", y="Log(MSE)",fill="")  
+        geom_point(size=3.5) +
+        labs(x="Size", y="Log(MSE)") +
+        theme(text = element_text(size=16,face="bold"),
+              axis.line = element_line(colour = 'black', size = 0.7))
+dev.off()
 
-
+## plotting results r^2
 r_sq_summary <- filter(results.summary,grepl("r_sq",technique))
 r_sq_summary
 
-## plotting results r^2
-r_sq_plot <- ggplot(r_sq_summary, aes(x=size,y=mean,colour=technique)) + 
-        geom_line(aes(x=size,y=mean)) + 
-        geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.1) + 
-        geom_point() +
-        labs(x="Size", y="R^2",fill="")
-
-grid.arrange(mse_plot,r_sq_plot,nrow=1)
+jpeg("../figures/trainSizeRsq.jpg")
+ggplot(r_sq_summary, aes(x=size,y=mean,colour=technique)) + 
+        geom_line(size=1.8) + 
+        geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=1) + 
+        geom_point(size=3.5) +
+        labs(x="Size", y="R^2") +
+        theme(text = element_text(size=16,face = "bold"),       ## change font text  
+              axis.line = element_line(colour = 'black', size = 0.7))   ## increase axis width
+dev.off()        
 
 
