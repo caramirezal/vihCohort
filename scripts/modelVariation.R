@@ -1,7 +1,6 @@
 ## Evaluation of variation in the coefficients for lasso
-
 library(glmnet)
-library(caret)
+library(dplyr)
 
 #########################################################################
 ## data preprocessing
@@ -38,12 +37,12 @@ colnames(input)
 
 ## model parameters
 n.sim <- 100
-ratio <- 0.8
+ratio <- 0.9
 nfolds <- 5
 
 
 ## vector to store coeficients
-res <- numeric(ncol(input)+1)
+res <- matrix(0,n.sim,ncol(input)+1)
 
 ## lasso iterations
 for (i in 1:n.sim) {
@@ -57,13 +56,18 @@ for (i in 1:n.sim) {
         
         ## stroing lasso results
         lasso.coef <- coef(lasso)
-        lasso.names <- rownames(lasso.coef)
         lasso.coef <- as.vector(lasso.coef)
-        names(lasso.coef) <- lasso.names
-        res <- res + lasso.coef
+        res[i,] <- lasso.coef
 }
-## calculate average
-res <- res/n.sim
-## drop intercept coeficiente
-res <- res[res >0 & ! names(res) %in% "(Intercept)"]
-sort(res,decreasing = TRUE)
+
+colnames(res) <- rownames(coef(lasso))
+
+## saving data
+write.csv(res,file = "../data/lassoVariation.csv",row.names=FALSE)
+sims <- read.csv("../data/lassoVariation.csv")
+
+## getting top 10 coefficients
+sims.summary <- data.frame("mean_lasso"=apply(sims,2,mean),
+                           "sd_lasso"=apply(sims,2,sd))
+sims.summary <- sims.summary[rownames(sims.summary)!="X.Intercept.",]
+sims.summary[order(-abs(sims.summary$means)),][1:10,]
