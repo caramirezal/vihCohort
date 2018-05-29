@@ -1,16 +1,57 @@
 ---
-title: "Reconstitución de células T CD4 en una cohorte prospectiva de pacientes con VIH"
-output: html_notebook
+title: Reconstitución de células T CD4 en una cohorte prospectiva de pacientes con
+  VIH
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
 ---
 
 ### **1. Comparación entre métodos**
 
-Para seleccionar la técnica de aprendizaje estadístico se compararon los métodos de LASSO, Ridge regression y random forest para diversos tamaños del conjunto de entrenamiento (80, 85, 90, 95 y 100 por ciento del total de observaciones). 
-Se realizaron un total de 100 simulaciones para cada método y cada tamaño de conjunto de entrenamiento y se calcularon la media de la suma de los errores (MSE) así como $R^2$ para evaluar el ajuste de cada método.
-Para las simulaciones de LASSO y Ridge regression se utilizaron un nfold de tamaño n - 1, donde n es el número de observaciones total para realizar la validación cruzada. De la validación cruzada se obtuvo el valor óptimo de lambda correspondiente al valor de lambda mínimo (lambda.min). Para las simulaciones de random forest se utilizaron 500 árboles y n/3 variables. En la figura siguiente se muestran el promedio y las desviaciones estándares de los valores de MSE (Figura 1 A) y $R^2$ (Figura 1 B) evaluados en el conjunto de *prueba*. Como se observa en la figura LASSO se desempeña mejor que ridge regression y random forest en cuanto a la exactitud de la predicción en el conjunto de prueba según los valores de MSE (Figura 1 A) y también explica mejor la varianza de los datos de acuerdo con los valores de $R^2$ (Figura 1 B). Se puede ver que Ridge regression tiene un desempeño pobre en estos datos. También se observa que el 90 por ciento del total de observaciones minimiza los valores de MSE y maximiza $R^2$ y por lo tanto se puede tomar como valor óptimo de tamaño del conjunto de prueba. 
+Para seleccionar la técnica de aprendizaje estadístico se compararon los métodos de LASSO, Ridge Regression y Random Forest para diversos tamaños del conjunto de entrenamiento (80, 85, 90, 95 y 100 por ciento del total de observaciones). 
+Se realizaron un total de 100 simulaciones para cada método y cada tamaño de conjunto de entrenamiento. Se calculó la media de la suma de los errores (MSE) así como $R^2$ para evaluar el ajuste de cada método.
+Para realizar la validación cruzada en las simulaciones de LASSO y Ridge Regression se utilizó un nfold igual a 10. De la validación cruzada se obtuvo el valor óptimo de lambda correspondiente al valor de lambda mínimo (lambda.min). Para las simulaciones de Random Forest se usaron 500 árboles y $n/3$ variables, donde $n$ es el número de observaciones total. En la figura siguiente se muestran el promedio y las desviaciones estándares de los valores de MSE (**Figura 1 A**) y $R^2$ (**Figura 1 B**) evaluados en el conjunto de *prueba*. Como se observa en la figura LASSO se desempeña mejor que Ridge Regression y Random Forest en cuanto a la exactitud de la predicción en el conjunto de prueba según los valores de MSE (**Figura 1 A**) y también explica mejor la varianza de los datos de acuerdo con los valores de $R^2$ (**Figura 1 B**). Se puede ver que Ridge Regression tiene un desempeño pobre en estos datos. También se observa que el 90 por ciento del total de observaciones minimiza los valores de MSE además de que maximiza $R^2$ y por lo tanto se puede tomar como valor óptimo de tamaño del conjunto de prueba. 
 
-![**Figura 1. Comparación entre métodos**. Valores de el logaritomo de MSE (A) y $R^2$ (B) de las simulaciones de LASSO (rojo), Ridge regression (verde) y random forest (azul). Los valores representan el promedio y la desviación estandar de 100 simulaciones. ](../figures/trainSize.jpg)
+![**Figura 1. Comparación entre métodos**. Valores de el logaritomo de MSE (A) y $R^2$ (B) de las simulaciones de LASSO (rojo), Ridge Regression (verde) y Random Forest (azul). Los valores representan el promedio y la desviación estandar de 100 simulaciones. ](../figures/trainSize.jpg)
 
-**Conclusiones**
 
-Se puede ver que...
+### **2. Evaluación de la variabilidad de LASSO y Random Forest**
+
+Se procedió a evaluar la variabilidad de las técnicas LASSO y Random Forest, las cuales que obtuvieron un mejor desempeño en cuanto al ajuste de los valores observados contra los predichos. Para ello se realizaron 100 simulaciones con el tamaño óptimo para el conjunto de entrenamiento igual a 90 por ciento del total en ambas técnicas. LASSO y Random Forest poseen la característica de seleccionar variables (feature selection) mediante diversas métricas. En el caso de LASSO se puede usar como métrica de la importancia de la variable el valor absoluto de su coeficiente. Para Random Forest se pueden utilizar como métricas de importancia el porcentaje de decremento promedio del MSE y el total de incremento de la pureza de los nodos. 
+
+
+
+```{r echo=FALSE}
+library(knitr)
+ranking <- read.csv("../data/ranking.csv")
+kable(ranking[1:15,c("ranking","lasso_variable","coefficient","sd")],
+      caption = "Variabilidad de los coeficientes de LASSO")
+```
+
+Para LASSO se obtuvo el valor promedio de los coeficientes así como su desviación estándar, véase la **tabla 1**. Por otro lado, en el caso Random Forest se registraron los valores del porcentaje de decremento promedio del MSE de cada variable. 
+En la **tabla 1** se muestran las variables con los top 15 mayores coeficientes de LASSO. Se observa que para esta técnica la variable con mayor coeficiente es el cociente de CD4/CD8s. Por otro lado, en la **tabla 2** se muestra el ranking de los top 15 variables con mayor incremento de MSE. Se puede ver que existen diferencias entre las variables rankeadas en ambos métodos. Para Random Forest la variable de mayor importancia es el cambio en los T CD4 en la semana 52. Además, se puede ver que LASSO presente cierta variabilidad en sus coeficientes. Por ejemplo, la variable mejor rankeada CocCD4_CD8_S52 presenta una variabilidad del 0.22 $(=50.07/222.86)$ de su valor. Mientras que la variable mejor rankeada en Random Forest DeltaCD4W52atleast150 cuenta con una variabilidad de 0.03 $(=0.71/18.81)$ en los valores de decremento promedio de MSE.  
+
+```{r echo=FALSE}
+forest.table <- ranking[1:15,c(1,5:7)]
+colnames(forest.table) <- c("ranking","forest_variable","%_dec_MSE","sd")
+kable(forest.table,caption = "Variabilidad del porcentaje de decremento promedio del ajuste de Random Forest")
+```
+
+
+### **3. Conclusiones**
+
+Para argumentar la elección del método de aprendizaje que usamos se implementó 
+una comparación de tres técnicas distintas las cuales son LASSO, Ridge Regression
+y Random Forest. Se pudo observar que LASSO superó a las demás técnicas en cuanto al ajuste de los valores observados con los predichos en el conjunto de *prueba*. Random Forest tuvo el segundo mejor desempeño y por último Ridge Regression el
+cual para estos datos tuvo un mal desempeño. Se observó que el tamaño óptimo para 
+el conjunto de prueba fue de 90 por ciento del total de observaciones. 
+Finalmente, para evaluar la variabilidad de LASSO y Random Forest se registraron los coeficientes y el 
+valor del porcentaje de decremento promedio de MSE, respectivamente. De lo cual
+se puede ver que existen diferencias en cuanto la importancia que adjudica cada método a los predictores. Siendo en LASSO el cociente de CD4/CD8s la variable
+mejor rankead mientras que el cambio en los T CD4 en la semana 52 lo fue para 
+Random Forest.
+
+Finalmente, LASSO parece tener mayor variabilidad si se toma en cuenta los valores de desviación estándard de los coeficientes. Sin embargo, no son directamente comparables la variabilidad de los coeficientes en LASSO con el decremento de MSE en Random Forest. Además, para la construcción de cada árbol en el método de Random Forest se utilizaron 500 árboles en cada simulación lo cual es probable que minimise la
+desviación estándard del porcentaje de decremento promedio de MSE.
