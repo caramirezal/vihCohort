@@ -1,0 +1,113 @@
+---
+title: "Data analysis on data from a VIH patients cohort"
+output: html_notebook
+---
+
+This report contains the implementation of machine learning techniques to data from a VIH
+patients cohort with the aim of predict CD4 T cell reconstitution syndrome. A careful parameter
+selection is given here.
+
+## Dependencies
+
+```{r, message=FALSE}
+## Dependencies
+library(randomForest)
+library(caret)
+library(party)
+library(gridExtra)
+
+## source local scripts
+source("../scripts/MLImplementation.R")
+```
+
+## Data preprocessing
+
+```{r}
+## reading data
+data <- read.csv("~/scripts/vihCohort/data/TablaLPS_IL18_20180217.csv")
+
+## drop categorical data
+data <- data[,sapply(data, is.numeric)]
+
+## list of removed variables
+drop <- c("Expediente",
+          "DeltaCD4W52atleast150",
+          "DeltaCD4_W52",
+          "CD4TCabove200_W052",
+          "CD4TCabove350_W052",
+          "Numero_consecutivo")
+
+## removing list of variables
+input <- data[,!(colnames(data)%in%drop)]
+
+## input definition
+input <- as.matrix(input)
+
+## output definition
+output <- data$DeltaCD4_W52
+
+```
+
+## Random forest 
+
+
+### Evaluation of RandomForest R Package method 
+
+The next function performs 100 simulations of random forest for the shown values of the **mtry** parameter. To see forestmtry() definition please see MLImplementation.R file in 
+the script folder.
+
+```{r}
+#jpeg("../figures/randforest_mtry_nsims=100_method=RandomForest.jpg")
+#forestmtry(output = output,
+#           input = input,
+#           nsims = 100,
+#           method = "randomForest",
+#           mtryInterval = seq(2,10,1))      ## parameters values 
+#invisible(dev.off())
+```
+
+![**Figure 1. Accuracy and time** *performance values for different values of the mtry parameter using the randomForest function. *](../figures/randforest_mtry_nsims=100_method=RandomForest.jpg)
+
+```{r}
+jpeg("../figures/randforest_ntree_nsims=100_method=RandomForest.jpg")
+forestntree(output = output,input = input,
+           nsims = 100,method = "randomForest",
+           ntreeInterval = seq(20,100,10))   ## parameter values
+invisible(dev.off())
+```
+
+The next plot show the evaluation of the accuracy and performance time for different number of
+trees parameter used to construct the mode.
+
+![**Figure 2**. *Accuracy and time performance values for different values of the ntree parameter using the randomForest function. *](../figures/randforest_ntree_nsims=100_method=RandomForest.jpg)
+
+
+### Evaluation of cforest from party R Package
+
+Evaluation of accuracy and performance time for different values of the mtry and ntrees
+parameters in the cforest function of the party R Package. Simulations are performed in 
+the same conditions as that for the previous randomForest function implementation.
+
+```{r}
+jpeg("../figures/randforest_mtry_nsims=100_method=cforest.jpg")
+forestmtry(output = output,
+           input = input,
+           nsims = 100,
+           method = "cforest",
+           mtryInterval = seq(2,10,1))      ## parameters values 
+invisible(dev.off())
+```
+
+![**Figure 3. Accuracy and time** *performance values for different values of the mtry parameter when cforest is implemented.*](../figures/randforest_mtry_nsims=100_method=cforest.jpg)
+
+
+```{r}
+jpeg("../figures/randforest_ntree_nsims=100_method=cforest.jpg")
+forestntree(output = output,input = input,
+           nsims = 100,method = "cforest",
+           ntreeInterval = seq(20,100,10))   ## parameter values
+invisible(dev.off())
+```
+
+![**Figure 4. Accuracy and time** *performance values for different values of the ntree parameter when cforest is implemented.*](../figures/randforest_ntree_nsims=100_method=cforest.jpg)
+
