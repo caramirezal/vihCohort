@@ -1,6 +1,8 @@
 ---
 title: "Data analysis on data from a VIH patients cohort"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 This report contains the implementation of machine learning techniques to data from a VIH
@@ -15,9 +17,9 @@ library(randomForest)
 library(caret)
 library(party)
 library(gridExtra)
+library(reshape2)
 
-## source local scripts
-source("../scripts/MLImplementation.R")
+
 ```
 
 ## Data preprocessing
@@ -46,6 +48,8 @@ input <- as.matrix(input)
 ## output definition
 output <- data$DeltaCD4_W52
 
+## source local scripts
+source("../scripts/MLImplementation.R")
 ```
 
 ## Random forest 
@@ -70,9 +74,9 @@ the script folder.
 
 ```{r}
 jpeg("../figures/randforest_ntree_nsims=100_method=RandomForest.jpg")
-forestntree(output = output,input = input,
-           nsims = 100,method = "randomForest",
-           ntreeInterval = seq(20,100,10))   ## parameter values
+#forestntree(output = output,input = input,
+#           nsims = 100,method = "randomForest",
+#           ntreeInterval = seq(20,100,10))   ## parameter values
 invisible(dev.off())
 ```
 
@@ -90,11 +94,11 @@ the same conditions as that for the previous randomForest function implementatio
 
 ```{r}
 jpeg("../figures/randforest_mtry_nsims=100_method=cforest.jpg")
-forestmtry(output = output,
-           input = input,
-           nsims = 100,
-           method = "cforest",
-           mtryInterval = seq(2,10,1))      ## parameters values 
+#forestmtry(output = output,
+#           input = input,
+#           nsims = 100,
+#           method = "cforest",
+#           mtryInterval = seq(2,10,1))      ## parameters values 
 invisible(dev.off())
 ```
 
@@ -103,11 +107,67 @@ invisible(dev.off())
 
 ```{r}
 jpeg("../figures/randforest_ntree_nsims=100_method=cforest.jpg")
-forestntree(output = output,input = input,
-           nsims = 100,method = "cforest",
-           ntreeInterval = seq(20,100,10))   ## parameter values
+#forestntree(output = output,input = input,
+#           nsims = 100,method = "cforest",
+#           ntreeInterval = seq(20,100,10))   ## parameter values
 invisible(dev.off())
 ```
 
 ![**Figure 4. Accuracy and time** *performance values for different values of the ntree parameter when cforest is implemented.*](../figures/randforest_ntree_nsims=100_method=cforest.jpg)
 
+### cforest versus randomForest methods
+
+Random forest methods were compared for different train sizes. Results are shown in the 
+next figure. Parameters were selected according to the previous parameter variation. For 
+cforest method mtry=3 and ntree=50. For randomForest mtry=3 and ntree=50. 
+See MLImplementation.R for the implementation.
+
+```{r, echo=FALSE}
+## preprocessing data
+results <- read.csv("../data/forestTrainSizes.csv")
+results <- melt(results,id="Size")
+
+## calculating mean of mse and R^2 values
+means <- with(results,aggregate(value,list(Size,variable),mean) )
+## standard deviations of mse and R^2 values
+sd <- with(results, aggregate(value,list(Size,variable),sd) )
+results.summary <- merge(means,sd,by=c("Group.1","Group.2"))
+colnames(results.summary) <- c("size","technique","mean","sd")
+
+
+accuracy <- results.summary[grepl("accuracy",results.summary$technique),]
+
+theme_set(theme_light())
+
+## plotting accuracy
+g <- ggplot(accuracy, aes(x=size,y=mean,colour=technique)) 
+g <- g +  geom_line()
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g <- g + geom_point(size=3.5)
+g <- g + labs(x="Size", y="MSE")
+g <- g + theme(text = element_text(size=16,face="bold"),
+              axis.line = element_line(colour = 'black', size = 0.7))
+g <- g + labs(title="Accuracy")
+g <- g + theme(legend.position = "none")
+
+
+time <- results.summary[grepl("time",results.summary$technique),]
+
+## plotting performance time
+g1 <- ggplot(time, aes(x=size,y=mean,colour=technique)) 
+g1 <- g1 +  geom_line()
+g1 <- g1 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g1 <- g1 + geom_point(size=3.5)
+g1 <- g1 + labs(x="Size", y="MSE")
+g1 <- g1 + theme(text = element_text(size=16,face="bold"),
+              axis.line = element_line(colour = 'black', size = 0.7))
+g1 <- g1 + labs(title="Performance time")
+g1 <- g1 + theme(legend.position = "none")
+
+## saving plot
+jpeg("../figures/forestTrainSizes.jpg")
+grid.arrange(g,g1,nrow=1)
+invisible(dev.off())
+```
+
+![**Figure 5. cforest vs randomForest**. *Accuracy and time performance values for different train sizes in cforest (pink) and randomForest (blue) functions.*](../figures/forestTrainSizes.jpg)
