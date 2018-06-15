@@ -1,12 +1,49 @@
 ## This script contains the R functions to implement Machine Learning, parameter selection,
 ## and plotting results in technicalReportML.Rmd 
 
+## Dependencies
+library(randomForest)
+library(caret)
+library(party)
+library(gridExtra)
+library(reshape2)
+library(glmnet)        
+
 ## function for calculating r^2  as 1 - rss/tss
 r_sq <- function(observed,predicted) {
         rss <- sum((observed-predicted)^2)
         tss <- sum((observed-mean(observed))^2)
         return( 1 - (rss/tss) )
 }
+
+#########################################################################################
+## data preprocessing
+
+## reading data
+data <- read.csv("../data/TablaLPS_IL18_20180217.csv")
+
+## drop categorical data
+data <- data[,sapply(data, is.numeric)]
+
+## list of removed variables
+drop <- c("Expediente",
+          "DeltaCD4W52atleast150",
+          "DeltaCD4_W52",
+          "CD4TCabove200_W052",
+          "CD4TCabove350_W052",
+          "Numero_consecutivo")
+
+## removing list of variables
+input <- data[,!(colnames(data)%in%drop)]
+
+## input definition
+input <- as.matrix(input)
+
+## input to dataframe
+input.df <- as.data.frame(input)
+
+## output definition
+output <- data$DeltaCD4_W52
 
 ###########################################################################################
 ## mtry variation
@@ -57,7 +94,7 @@ forestmtry <- function(output,
                                 ## perform prediction on test sample
                                 forest.pred <- predict(forest,
                                                        newdata=input[-intrain,])
-                                mss <- mean(sum(forest.pred-output[-intrain])^2)
+                                mss <- mean((forest.pred-output[-intrain])^2)
                                 mse <- sqrt(mss)
                         }
                         
@@ -75,7 +112,7 @@ forestmtry <- function(output,
                                                         newdata = input[-intrain,])
                                 
                                 ## calcualte mse values
-                                mss <- mean(sum(rforest.pred-output[-intrain])^2)
+                                mss <- mean((rforest.pred-output[-intrain])^2)
                                 mse <- sqrt(mss)
                                 mse
                                 
@@ -117,6 +154,23 @@ forestmtry <- function(output,
         
 } 
 
+## performs mtry parameter variation in randomForest
+jpeg("../figures/randforest_mtry_nsims=100_method=RandomForest.jpg")
+forestmtry(output = output,
+           input = input,
+           nsims = 100,
+           method = "randomForest",
+           mtryInterval = seq(2,10,1))      ## parameters values 
+dev.off()
+
+## performs ntree parameter variation in cforest
+jpeg("../figures/randforest_mtry_nsims=100_method=cforest.jpg")
+forestmtry(output = output,
+           input = input,
+           nsims = 100,
+           method = "cforest",
+           mtryInterval = seq(2,10,1))      ## parameters values 
+dev.off()
 
 ############################################################################################
 ## ntree paramter variation
@@ -167,7 +221,7 @@ forestntree <- function(output,
                                 forest.pred <- predict(forest,newdata=input[-intrain,])
                                 
                                 ## calculate mse
-                                mss <- mean(sum(forest.pred-output[-intrain])^2)
+                                mss <- mean((forest.pred-output[-intrain])^2)
                                 mse <- sqrt(mss)
                         }
                         
@@ -184,7 +238,7 @@ forestntree <- function(output,
                         ## perform prediction on test sample
                         forest.pred <- predict(forest,
                                                newdata=input[-intrain,])
-                        mss <- mean(sum(forest.pred-output[-intrain])^2)
+                        mss <- mean((forest.pred-output[-intrain])^2)
                         mse <- sqrt(mss)
                         
                         ## index to store simulation data
@@ -223,6 +277,21 @@ forestntree <- function(output,
         grid.arrange(g,g1,nrow=1)
         
 }
+
+## performs ntree variation in randomForest method
+jpeg("../figures/randforest_ntree_nsims=100_method=RandomForest.jpg")
+forestntree(output = output,input = input,
+           nsims = 100,method = "randomForest",
+           ntreeInterval = seq(20,100,10))   ## parameter values
+dev.off()
+
+## performs ntree variation in cforest method
+jpeg("../figures/randforest_ntree_nsims=100_method=cforest.jpg")
+forestntree(output = output,input = input,
+           nsims = 100,method = "cforest",
+           ntreeInterval = seq(20,100,10))   ## parameter values
+dev.off()
+
 
 ######################################################################################
 ## Compare cforest versus randomForest functions for different train
@@ -267,7 +336,7 @@ for ( i in 1:length(p) ) {
                 ## perform prediction on test sample
                 forest.pred <- predict(forest,
                                        newdata=input.df[-intrain,])
-                mss <- mean(sum(forest.pred-output[-intrain])^2)
+                mss <- mean((forest.pred-output[-intrain])^2)
                 msecforest <- sqrt(mss)
                 
                 ## calculation of R^2
@@ -294,7 +363,7 @@ for ( i in 1:length(p) ) {
                                        newdata=input.df[-intrain,])
                 
                 ## calculate accuracy
-                mss <- mean(sum(forest.pred-output[-intrain])^2)
+                mss <- mean((forest.pred-output[-intrain])^2)
                 mse <- sqrt(mss)
                 
                 ## calculate rsq
@@ -308,6 +377,168 @@ for ( i in 1:length(p) ) {
         }
 }
 
-## writing results
-#write.csv(results,"../data/forestTrainSizes.csv",row.names = FALSE)
+## stroing results
+write.csv(results,"../data/forestTrainSizes.csv",row.names = FALSE)
 
+
+## preprocessing previuos results
+results <- read.csv("../data/forestTrainSizes.csv")
+results <- melt(results,id="Size")
+
+## calculating mean of mse and R^2 values
+means <- with(results,aggregate(value,list(Size,variable),mean) )
+## standard deviations of mse and R^2 values
+sd <- with(results, aggregate(value,list(Size,variable),sd) )
+results.summary <- merge(means,sd,by=c("Group.1","Group.2"))
+colnames(results.summary) <- c("size","technique","mean","sd")
+
+
+accuracy <- results.summary[grepl("accuracy",results.summary$technique),]
+
+theme_set(theme_light())
+
+## plotting accuracy
+g <- ggplot(accuracy, aes(x=size,y=mean,colour=technique)) 
+g <- g +  geom_line()
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g <- g + geom_point(size=3.5)
+g <- g + labs(x="Size", y="MSE")
+g <- g + theme(text = element_text(size=16,face="bold"),
+               axis.line = element_line(colour = 'black', size = 0.7))
+g <- g + labs(title="Accuracy")
+g <- g + theme(legend.position = "none")
+
+
+time <- results.summary[grepl("time",results.summary$technique),]
+
+## plotting performance time
+g1 <- ggplot(time, aes(x=size,y=mean,colour=technique)) 
+g1 <- g1 +  geom_line()
+g1 <- g1 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g1 <- g1 + geom_point(size=3.5)
+g1 <- g1 + labs(x="Size", y="MSE")
+g1 <- g1 + theme(text = element_text(size=16,face="bold"),
+                 axis.line = element_line(colour = 'black', size = 0.7))
+g1 <- g1 + labs(title="Performance time")
+g1 <- g1 + theme(legend.position = "none")
+
+## saving plot
+jpeg("../figures/forestTrainSizes.jpg")
+grid.arrange(g,g1,nrow=1)
+dev.off()
+
+
+###################################################################################
+## Lasso simulations
+
+## number of simulations
+nsims <- 100
+
+## train testing sizes
+sizes <- seq(0.5,0.90,0.05)
+
+## matrix to store results of simulations
+results <- matrix(0,length(sizes)*nsims,4)
+results <- as.data.frame(results)
+colnames(results) <- c("mse_lasso","r_sq_lasso",
+                       "size","time_lasso")
+
+
+## iteration of lasso, ridge, and random forest regression simulations
+for ( i in 1:length(sizes) ) {
+        ## train test definition
+        intrain <- createDataPartition(output,p=sizes[i],list = FALSE)
+        
+        for ( j in 1:nsims ) {
+                ##########################################################
+                ## lasso 
+                
+                ## lasso Lambda optimal calculation
+                initialTime <- Sys.time()
+                lasso <- cv.glmnet(x=input[intrain,],y = output[intrain])
+                totalTime <- Sys.time() - initialTime 
+                
+                y_predicted <- predict(lasso, newx=input[-intrain,],
+                                               c=lasso$lambda.min,
+                                               type="response")
+                
+                mss_lasso <- mean((y_predicted-output[-intrain])^2)
+                mse_lasso <- sqrt(mss_lasso)
+                
+                r_sq_lasso <- r_sq(observed=output[-intrain],
+                                   predicted=y_predicted)
+                
+                index <- (i-1)*nsims + j
+                results[index, "mse_lasso"] <- mse_lasso
+                results[index,"r_sq_lasso"] <- r_sq_lasso
+                results[index,"size"] <- sizes[i]
+                results[index,"time_lasso"] <- totalTime
+        }
+}
+
+head(results)
+write.csv(results,"../data/lassoTrainSizes.csv",
+          row.names = FALSE)
+
+results.m <- melt(results,id="size")
+head(results.m)
+
+## calculating mean of mse and R^2 values
+means <- with(results.m,aggregate(value,list(size,variable),mean) )
+## standard deviations of mse and R^2 values
+sd <- with(results.m, aggregate(value,list(size,variable),sd) )
+results.summary <- merge(means,sd,by=c("Group.1","Group.2"))
+colnames(results.summary) <- c("size","technique","mean","sd")
+results.summary
+
+## select accuracy values for plot
+mse.summary <- results.summary[grepl("mse",results.summary$technique),] 
+
+## plot mse values
+theme_set(theme_light())
+g <- ggplot(mse.summary, aes(x=size,y=mean,colour=technique)) 
+g <- g +  geom_line()
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g <- g + geom_point(size=3.5)
+g <- g + labs(x="Size", y="MSE")
+g <- g + theme(text = element_text(size=26,face="bold"),
+               axis.line = element_line(colour = 'black', size = 0.7))
+g <- g + labs(title="Lasso accuracy")
+g <- g + theme(legend.position = "none")
+jpeg("../figures/lassoMSEtrainSize.jpg")
+plot(g)
+dev.off()
+
+## select accuracy values for plot
+rsq.summary <- results.summary[grepl("r_sq",results.summary$technique),] 
+
+## plot rsq values
+theme_set(theme_light())
+g <- ggplot(rsq.summary, aes(x=size,y=mean,colour=technique)) 
+g <- g +  geom_line()
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g <- g + geom_point(size=3.5)
+g <- g + labs(x="Size", y="R^2")
+g <- g + theme(text = element_text(size=26,face="bold"),
+               axis.line = element_line(colour = 'black', size = 0.7))
+g <- g + labs(title="Lasso Variance explained")
+g <- g + theme(legend.position = "none")
+jpeg("../figures/lassoRsqtrainSize.jpg")
+plot(g)
+dev.off()
+
+time.summary <- results.summary[grepl("time",results.summary$technique),]
+## plot rsq values
+theme_set(theme_light())
+g <- ggplot(time.summary, aes(x=size,y=mean,colour=technique)) 
+g <- g +  geom_line()
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
+g <- g + geom_point(size=3.5)
+g <- g + labs(x="Size", y="Time (secs)")
+g <- g + theme(text = element_text(size=26,face="bold"),
+               axis.line = element_line(colour = 'black', size = 0.7))
+g <- g + labs(title="Lasso Performance time")
+g <- g + theme(legend.position = "none")
+jpeg("../figures/lassoTimeTrainSize.jpg")
+plot(g)
+dev.off()
