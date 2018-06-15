@@ -163,13 +163,308 @@ forestmtry(output = output,
            mtryInterval = seq(2,10,1))      ## parameters values 
 dev.off()
 
-## performs ntree parameter variation in cforest
-jpeg("../figures/randforest_mtry_nsims=100_method=cforest.jpg")
-forestmtry(output = output,
-           input = input,
-           nsims = 100,
-           method = "cforest",
-           mtryInterval = seq(2,10,1))      ## parameters values 
+##################################################################################
+## randomForest evaluation                                                      ##
+##################################################################################
+
+## ntree parameter variation in randomForest method
+
+## initial parameters
+nsims <- 100
+mtryInterval <- seq(2,10,1)
+
+## results is defined data frame to store results
+results <- matrix(0,nsims*length(mtryInterval),3)
+results <- as.data.frame(results)
+colnames(results) <- c("Accuracy","mtry","performance")
+
+for (i in 1:length(mtryInterval)){
+        for (j in 1:nsims) {
+                
+                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
+                
+                ## perform randomForest
+                initialTime <- Sys.time()
+                rforest <- randomForest(output[intrain]~.,
+                                        data=input[intrain,],
+                                        mtry=mtryInterval[i]) ## parameter variation
+                finalTime <- Sys.time() - initialTime
+                
+                ## perform predictions
+                rforest.pred <- predict(rforest,
+                                        newdata = input[-intrain,])
+                
+                ## calcualte mse values
+                mss <- mean((rforest.pred-output[-intrain])^2)
+                mse <- sqrt(mss)
+                mse
+                
+                ## index to store simulation data
+                index <- (nsims*(i-1)) + j
+                
+                ## storing results
+                results[index,1] <- mse
+                results[index,2] <- mtryInterval[i]
+                results[index,3] <- finalTime
+        } 
+}
+
+#write.csv(results,"../data/rforestMtryVariation.csv",row.names = FALSE)
+#results <- read.csv("../figures/rforestMtryVariation.csv")
+
+## plot accuracy test
+theme_set(theme_bw())
+g <- ggplot(results, aes(x=mtry,y=Accuracy)) + geom_point() 
+g <- g + geom_boxplot(aes(group=mtry,fill="steelblue"))
+g <- g + theme(legend.position = "none",      ## remove legends
+               text = element_text(size=26,face="bold")) 
+g <- g + labs(title =paste("rforest - Accuracy"),y="MSE")
+g <- g + theme(title = element_text(face="bold"),
+               axis.title.x = element_text(face="bold"),
+               axis.title.y = element_text(face="bold"))
+
+## plot performance time
+theme_set(theme_bw())
+g1 <- ggplot(results, aes(x=mtry,y=performance)) + geom_point() 
+g1 <- g1 + geom_boxplot(aes(group=mtry,       ## x axis cathegorical values  
+                            fill=132))        ## 132 -> steelblue color
+g1 <- g1 + theme(legend.position = "none",
+                 text = element_text(size=26,face="bold"))    
+g1 <- g1 + labs(title =paste("rforest - time"),
+                y="Time (secs)")
+g1 <- g1 + theme(title = element_text(face="bold"),  
+                 axis.title.x = element_text(face="bold"),
+                 axis.title.y = element_text(face="bold"))
+
+jpeg("../figures/rforestMtryVariation.jpg")
+grid.arrange(g,g1,nrow=1)
+dev.off()
+
+#######################################################################################
+## ntree parameter variation in randomForest method
+
+## initial parameters
+nsims <- 100
+ntreeInterval <- seq(50,500,50)
+
+## data to store results
+results <- matrix(0,nsims*length(ntreeInterval),3)
+results <- as.data.frame(results)
+colnames(results) <- c("Accuracy","ntree","performance")
+
+for (i in 1:length(ntreeInterval)){
+        for (j in 1:nsims) {
+                
+                ## perform randomForest
+                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
+                initialTime <- Sys.time()
+                forest <- randomForest(output[intrain]~.,
+                                       data=input[intrain,],
+                                       ntree = ntreeInterval[i]) ## parameter variation
+                finalTime <- Sys.time() - initialTime
+                
+                ## perform prediction on test sample
+                forest.pred <- predict(forest,
+                                       newdata=input[-intrain,])
+                mss <- mean((forest.pred-output[-intrain])^2)
+                mse <- sqrt(mss)
+                
+                ## index to store simulation data
+                index <- (nsims*(i-1)) + j
+                
+                ## storing results
+                results[index,1] <- mse
+                results[index,2] <- ntreeInterval[i]
+                results[index,3] <- finalTime
+        } 
+}
+
+#write.csv(results,"../data/rforestNtreeVariation.csv",row.names = FALSE)
+#results <- read.csv("../data/rforestNtreeVariation.csv")
+
+## plot Accuracy MSE values
+theme_set(theme_bw())
+g <- ggplot(results, aes(x=ntree,y=Accuracy)) + geom_point() 
+g <- g + geom_boxplot(aes(group=ntree,fill="steelblue"))
+g <- g + theme(legend.position = "none",
+               text = element_text(size=26,face="bold")) 
+g <- g + labs(title =paste("rforest - Accuracy"),y="MSE")
+g <- g + theme(title = element_text(face="bold"),
+               axis.title.x = element_text(face="bold"),
+               axis.title.y = element_text(face="bold"))
+
+## plot waiting times
+g1 <- ggplot(results, aes(x=ntree,y=performance)) + geom_point() 
+g1 <- g1 + geom_boxplot(aes(group=ntree,       ## x axis cathegorical values  
+                            fill=132))        ## 132 -> steelblue color
+g1 <- g1 + theme(legend.position = "none",
+                 text = element_text(size=26,face="bold"))    ## removing legend
+g1 <- g1 + labs(title =paste("rforest - Waiting time"),
+                y="Time (secs)")
+g1 <- g1 + theme(title = element_text(face="bold"),  
+                 axis.title.x = element_text(face="bold"),
+                 axis.title.y = element_text(face="bold"))
+
+jpeg("../figures/rforestNtreeVriation.jpg")
+grid.arrange(g,g1,nrow=1)
+dev.off()
+
+
+############################################################################################
+## cforest method                                                                         ##
+############################################################################################
+
+## mtry parameter variation in cforest method
+
+## initial parameters
+nsims <- 100
+mtryInterval <- seq(2,10,1)
+
+## results is defined data frame to store results
+results <- matrix(0,nsims*length(mtryInterval),3)
+results <- as.data.frame(results)
+colnames(results) <- c("Accuracy","mtry","performance")
+
+for (i in 1:length(mtryInterval)){
+        for (j in 1:nsims) {
+                
+                ## simulation parameters
+                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
+                cforestControl <- cforest_control(teststat = "quad",
+                                                  testtype = "Univ", 
+                                                  mincriterion = 0, 
+                                                  ntree = 50, 
+                                                  mtry = mtryInterval[i], ## variation
+                                                  replace = FALSE)
+                
+                
+                ## perform simulation
+                initialTime <- Sys.time()
+                forest <- cforest(output[intrain]~.,
+                                  data=input.df[intrain,],
+                                  control = cforestControl)
+                finalTime <- Sys.time() - initialTime
+                
+                ## perform prediction on test sample
+                forest.pred <- predict(forest,
+                                       newdata=input.df[-intrain,])
+                mss <- mean((forest.pred-output[-intrain])^2)
+                mse <- sqrt(mss)
+                
+                ## index to store simulation data
+                index <- (nsims*(i-1)) + j
+                
+                ## storing results
+                results[index,1] <- mse
+                results[index,2] <- mtryInterval[i]
+                results[index,3] <- finalTime
+        } 
+}
+
+#write.csv(results,"../data/cforestMtryVariation.csv",row.names = FALSE)
+results <- read.csv("../data/cforestMtryVariation.csv")
+
+## plot accuracy test
+theme_set(theme_bw())
+g <- ggplot(results, aes(x=mtry,y=Accuracy)) + geom_point() 
+g <- g + geom_boxplot(aes(group=mtry,fill="steelblue"))
+g <- g + theme(legend.position = "none",      ## remove legends
+               text = element_text(size=26,face="bold")) 
+g <- g + labs(title =paste("cforest - Accuracy"),y="MSE")
+g <- g + theme(title = element_text(face="bold"),
+               axis.title.x = element_text(face="bold"),
+               axis.title.y = element_text(face="bold"))
+
+## plot performance time
+theme_set(theme_bw())
+g1 <- ggplot(results, aes(x=mtry,y=performance)) + geom_point() 
+g1 <- g1 + geom_boxplot(aes(group=mtry,       ## x axis cathegorical values  
+                            fill=132))        ## 132 -> steelblue color
+g1 <- g1 + theme(legend.position = "none",
+                 text = element_text(size=26,face="bold"))    
+g1 <- g1 + labs(title =paste("cforest - time"),
+                y="Time (secs)")
+g1 <- g1 + theme(title = element_text(face="bold"),  
+                 axis.title.x = element_text(face="bold"),
+                 axis.title.y = element_text(face="bold"))
+
+jpeg("../figures/cforestMtryVariation.jpg")
+grid.arrange(g,g1,nrow=1)
+dev.off()
+
+############################################################################################
+## ntree parameter variation in cforest
+
+## initial parameters
+nsims <- 100
+ntreeInterval <- seq(50,500,50)
+
+results <- matrix(0,nsims*length(ntreeInterval),3)
+results <- as.data.frame(results)
+colnames(results) <- c("Accuracy","ntree","performance")
+
+for (i in 1:length(ntreeInterval)){
+        for (j in 1:nsims) {
+                
+                ## initial settings
+                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
+                cforestControl <- cforest_control(teststat = "quad",
+                                                  testtype = "Univ", 
+                                                  mincriterion = 0, 
+                                                  ntree = ntreeInterval[i], 
+                                                  mtry = 3,
+                                                  replace = FALSE)
+                
+                ## perform cforest
+                initialTime <- Sys.time()
+                forest <- cforest(output[intrain]~.,data=input.df[intrain,],
+                                  control = cforestControl)
+                finalTime <- Sys.time() - initialTime
+                
+                ## calculate predictions
+                forest.pred <- predict(forest,newdata=input.df[-intrain,])
+                
+                ## calculate mse
+                mss <- mean((forest.pred-output[-intrain])^2)
+                mse <- sqrt(mss)
+                
+                ## index to store simulation data
+                index <- (nsims*(i-1)) + j
+                
+                ## storing results
+                results[index,1] <- mse
+                results[index,2] <- ntreeInterval[i]
+                results[index,3] <- finalTime
+        } 
+}
+
+#write.csv(results,"../data/cforestNtreeVariation.csv",row.names = FALSE)
+#results <- read.csv("../data/cforestNtreeVariation.csv")
+
+## plot Accuracy MSE values
+g <- ggplot(results, aes(x=ntree,y=Accuracy)) + geom_point() 
+g <- g + geom_boxplot(aes(group=ntree,fill="steelblue"))
+g <- g + theme(legend.position = "none",
+               text = element_text(size = 26,face = "bold")) 
+g <- g + labs(title =paste("cforest - Accuracy"),y="MSE")
+g <- g + theme(title = element_text(face="bold"),
+               axis.title.x = element_text(face="bold"),
+               axis.title.y = element_text(face="bold"))
+
+## plot waiting times
+g1 <- ggplot(results, aes(x=ntree,y=performance)) + geom_point() 
+g1 <- g1 + geom_boxplot(aes(group=ntree,       ## x axis cathegorical values  
+                            fill=132))        ## 132 -> steelblue color
+g1 <- g1 + theme(legend.position = "none",
+                 text = element_text(size = 26,face = "bold")) 
+g1 <- g1 + labs(title =paste("rforest - Waiting time"),
+                y="Time (secs)")
+g1 <- g1 + theme(title = element_text(face="bold"),  
+                 axis.title.x = element_text(face="bold"),
+                 axis.title.y = element_text(face="bold"))
+
+jpeg("../figures/cforestNtreeVariation.jpg")
+grid.arrange(g,g1,nrow=1)
 dev.off()
 
 ############################################################################################
@@ -321,8 +616,8 @@ for ( i in 1:length(p) ) {
                 cforestControl <- cforest_control(teststat = "quad",
                                                   testtype = "Univ", 
                                                   mincriterion = 0, 
-                                                  ntree = 45, 
-                                                  mtry = 3,
+                                                  ntree = 300, 
+                                                  mtry = 6,
                                                   replace = FALSE)
                 
                 
@@ -354,8 +649,8 @@ for ( i in 1:length(p) ) {
                 #intrain <- createDataPartition(output,p = p[i],list = FALSE)
                 forest <- randomForest(output[intrain]~.,
                                        data=input[intrain,],
-                                       ntree = 50,
-                                       mtry=4)
+                                       ntree = 400,
+                                       mtry=8)
                 finalTime <- Sys.time() - initialTime
                 
                 ## perform prediction on test sample
@@ -379,7 +674,7 @@ for ( i in 1:length(p) ) {
 
 ## stroing results
 write.csv(results,"../data/forestTrainSizes.csv",row.names = FALSE)
-
+results <- read.csv("../data/forestTrainSizes.csv")
 
 ## preprocessing previuos results
 results <- read.csv("../data/forestTrainSizes.csv")
@@ -403,9 +698,8 @@ g <- g +  geom_line()
 g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
 g <- g + geom_point(size=3.5)
 g <- g + labs(x="Size", y="MSE")
-g <- g + theme(text = element_text(size=16,face="bold"),
+g <- g + theme(text = element_text(size=26,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
-g <- g + labs(title="Accuracy")
 g <- g + theme(legend.position = "none")
 
 
@@ -416,10 +710,9 @@ g1 <- ggplot(time, aes(x=size,y=mean,colour=technique))
 g1 <- g1 +  geom_line()
 g1 <- g1 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
 g1 <- g1 + geom_point(size=3.5)
-g1 <- g1 + labs(x="Size", y="MSE")
-g1 <- g1 + theme(text = element_text(size=16,face="bold"),
+g1 <- g1 + labs(x="Size", y="Time (secs)")
+g1 <- g1 + theme(text = element_text(size=26,face="bold"),
                  axis.line = element_line(colour = 'black', size = 0.7))
-g1 <- g1 + labs(title="Performance time")
 g1 <- g1 + theme(legend.position = "none")
 
 ## saving plot
