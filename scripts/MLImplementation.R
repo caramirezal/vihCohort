@@ -7,7 +7,8 @@ library(caret)
 library(party)
 library(gridExtra)
 library(reshape2)
-library(glmnet)        
+library(glmnet)
+library(dplyr)
 
 ## function for calculating r^2  as 1 - rss/tss
 r_sq <- function(observed,predicted) {
@@ -721,6 +722,93 @@ grid.arrange(g,g1,nrow=1)
 dev.off()
 
 
+##################################################################################
+##############################################################################
+## Random forest iteration
+## evaluation of variabiblity of importance of variables
+## in randomForest method
+
+n.sim <- 100
+
+results_forest <- matrix(0,n.sim,ncol(input))
+colnames(results_forest) <- colnames(input)
+results_forest
+
+for (i in 1:n.sim) {
+        ## create train partition
+        intrain <- createDataPartition(output, p = 0.9, list = FALSE)
+        
+        ## perform random forest
+        forest <- randomForest(x = input.df[intrain,],
+                               y = output[intrain],importance = TRUE,
+                               ntree = 400,
+                               mtry = 8)
+        
+        ## store data
+        results_forest[i,] <- importance(forest,scale=FALSE)[,"%IncMSE"]
+}
+
+# saving data
+#write.csv(results_forest,"../data/importanceForestSims.csv",row.names = FALSE)
+#results_forest <- read.csv("../data/importanceForestSims.csv")
+
+## calculating mean and sd 
+forest_mean <- apply(results_forest,2,mean)
+forest_sd <- apply(results_forest,2,sd)
+forest.summary <- data.frame("variable_forest"=names(forest_mean),
+                             "mean_forest"=forest_mean,
+                             "sd_forest"=forest_sd)
+forest.summary <- arrange(forest.summary,desc(mean_forest))
+forest.summary <- mutate(forest.summary,ranking=1:nrow(forest.summary))
+
+write.csv(forest.summary,"../data/rankingRForest.csv")
+
+
+##############################################################################
+## Random forest iteration
+## evaluation of variabiblity of importance of variables
+## in randomForest method
+
+n.sim <- 3
+
+results_cforest <- matrix(0,n.sim,ncol(input))
+colnames(results_cforest) <- colnames(input)
+results_cforest
+
+for (i in 1:n.sim) {
+        ## initial parameters
+        intrain <- createDataPartition(output, p = 0.9, list = FALSE)
+        cforestControl <- cforest_control(teststat = "quad",
+                                          testtype = "Univ", 
+                                          mincriterion = 0, 
+                                          ntree = 300, 
+                                          mtry = 6,
+                                          replace = FALSE)
+        
+        ## perform random forest
+        forest <- cforest(output[intrain]~.,
+                          data = input.df[intrain,])
+        
+        ## store data
+        results_cforest[i,] <- varimp(forest)
+}
+
+# saving data
+#write.csv(results_forest,"../data/importanceForestSims.csv",row.names = FALSE)
+#results_forest <- read.csv("../data/importanceForestSims.csv")
+
+## calculating mean and sd 
+cforest_mean <- apply(results_cforest,2,mean)
+cforest_sd <- apply(results_cforest,2,sd)
+cforest.summary <- data.frame("variable_cforest"= names(cforest_mean),
+                             "mean_cforest"= cforest_mean,
+                             "sd_cforest"= cforest_sd)
+cforest.summary <- arrange(cforest.summary,desc(mean_cforest))
+cforest.summary <- mutate(cforest.summary,ranking=1:nrow(cforest.summary))
+
+write.csv(cforest.summary,"../data/rankingcForest.csv")
+
+###################################################################################
 ###################################################################################
 ## Lasso simulations
 
@@ -752,8 +840,8 @@ for ( i in 1:length(sizes) ) {
                 totalTime <- Sys.time() - initialTime 
                 
                 y_predicted <- predict(lasso, newx=input[-intrain,],
-                                               c=lasso$lambda.min,
-                                               type="response")
+                                       c=lasso$lambda.min,
+                                       type="response")
                 
                 mss_lasso <- mean((y_predicted-output[-intrain])^2)
                 mse_lasso <- sqrt(mss_lasso)
@@ -769,12 +857,12 @@ for ( i in 1:length(sizes) ) {
         }
 }
 
-head(results)
+
 write.csv(results,"../data/lassoTrainSizes.csv",
           row.names = FALSE)
 
 results.m <- melt(results,id="size")
-head(results.m)
+
 
 ## calculating mean of mse and R^2 values
 means <- with(results.m,aggregate(value,list(size,variable),mean) )
@@ -787,51 +875,45 @@ results.summary
 ## select accuracy values for plot
 mse.summary <- results.summary[grepl("mse",results.summary$technique),] 
 
+color <- "steelblue"
+
 ## plot mse values
 theme_set(theme_light())
-g <- ggplot(mse.summary, aes(x=size,y=mean,colour=technique)) 
-g <- g +  geom_line()
-g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
-g <- g + geom_point(size=3.5)
+g <- ggplot(mse.summary, aes(x=size,y=mean)) 
+g <- g +  geom_line(colour=color)
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01,colour=color) 
+g <- g + geom_point(size=3.5,colour=color)
 g <- g + labs(x="Size", y="MSE")
-g <- g + theme(text = element_text(size=26,face="bold"),
+g <- g + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
-g <- g + labs(title="Lasso accuracy")
 g <- g + theme(legend.position = "none")
-jpeg("../figures/lassoMSEtrainSize.jpg")
 plot(g)
-dev.off()
 
 ## select accuracy values for plot
 rsq.summary <- results.summary[grepl("r_sq",results.summary$technique),] 
 
 ## plot rsq values
-theme_set(theme_light())
-g <- ggplot(rsq.summary, aes(x=size,y=mean,colour=technique)) 
-g <- g +  geom_line()
-g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
-g <- g + geom_point(size=3.5)
-g <- g + labs(x="Size", y="R^2")
-g <- g + theme(text = element_text(size=26,face="bold"),
+g1 <- ggplot(rsq.summary, aes(x=size,y=mean)) 
+g1 <- g1 +  geom_line(colour=color)
+g1 <- g1 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01,colour=color) 
+g1 <- g1 + geom_point(size=3.5,colour=color)
+g1 <- g1 + labs(x="Size", y="R^2")
+g1 <- g1 + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
-g <- g + labs(title="Lasso Variance explained")
-g <- g + theme(legend.position = "none")
-jpeg("../figures/lassoRsqtrainSize.jpg")
-plot(g)
-dev.off()
+g1 <- g1 + theme(legend.position = "none")
+plot(g1)
 
 time.summary <- results.summary[grepl("time",results.summary$technique),]
+
 ## plot rsq values
-theme_set(theme_light())
-g <- ggplot(time.summary, aes(x=size,y=mean,colour=technique)) 
-g <- g +  geom_line()
-g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01) 
-g <- g + geom_point(size=3.5)
-g <- g + labs(x="Size", y="Time (secs)")
-g <- g + theme(text = element_text(size=26,face="bold"),
+g2 <- ggplot(time.summary, aes(x=size,y=mean)) 
+g2 <- g2 +  geom_line(colour=color)
+g2 <- g2 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01,colour=color) 
+g2 <- g2 + geom_point(size=3.5,colour=color)
+g2 <- g2 + labs(x="Size", y="Time (secs)")
+g2 <- g2 + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
-g <- g + labs(title="Lasso Performance time")
-g <- g + theme(legend.position = "none")
-jpeg("../figures/lassoTimeTrainSize.jpg")
-plot(g)
-dev.off()
+g2 <- g2 + theme(legend.position = "none")
+plot(g2)
+
+grid.arrange(g,g1,g2,nrow=1)
