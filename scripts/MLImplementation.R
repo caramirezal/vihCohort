@@ -9,6 +9,7 @@ library(gridExtra)
 library(reshape2)
 library(glmnet)
 library(dplyr)
+library(e1071)
 
 ## function for calculating r^2  as 1 - rss/tss
 r_sq <- function(observed,predicted) {
@@ -917,3 +918,146 @@ g2 <- g2 + theme(legend.position = "none")
 plot(g2)
 
 grid.arrange(g,g1,g2,nrow=1)
+
+##########################################################################
+## performing simulations
+
+n_sims <- 100
+sizes <- seq(0.5,0.9,0.05)
+
+## matrix to store results of simulations
+results <- matrix(0,length(sizes)*n_sims,4)
+colnames(results) <- c("mse","r_sq","time","size")
+results <- as.data.frame(results)
+head(results)
+
+
+## iteration of lasso, ridge, and random forest regression simulations
+for ( i in 1:length(sizes) ) {
+        for ( j in 1:n_sims ) {
+                
+                train <- createDataPartition(output,p=sizes[i],list=FALSE)
+                
+                ## Ridge regression
+                initialTime <- Sys.time()
+                ridge <- cv.glmnet(x=input[train,],y=output[train],
+                                   alpha=0)
+                totalTime <- Sys.time() - initialTime
+                
+                ## performing predictions
+                y_predicted_r <- predict(ridge, newx=input[-train,],
+                                         c=lasso$lambda.min,
+                                         type="response")
+                
+                ## ridge regression mse 
+                mss_ridge <- mean((y_predicted_r-output[-train])^2)
+                mse_ridge <- sqrt(mss_ridge)
+                
+                ## Rigde regression r^2 calculation
+                r_sq_ridge <- r_sq(observed=output[-train],
+                                   predicted=y_predicted_r) 
+                
+                index <- (i-1)*n_sims + j
+                
+                results$mse[index] <- mse_ridge
+                results$r_sq[index] <- r_sq_ridge
+                results$size[index] <- sizes[i]
+                results$time[index] <- totalTime
+                
+        }
+}
+head(results)
+
+write.csv(results,"../data/ridgeRegTrainSizes.csv",
+          row.names = FALSE)
+
+results.m <- melt(results,id="size")
+
+
+## calculating mean of mse and R^2 values
+means <- with(results.m,aggregate(value,list(size,variable),mean) )
+## standard deviations of mse and R^2 values
+sd <- with(results.m, aggregate(value,list(size,variable),sd) )
+results.summary <- merge(means,sd,by=c("Group.1","Group.2"))
+colnames(results.summary) <- c("size","technique","mean","sd")
+results.summary
+
+## select accuracy values for plot
+mse.summary <- results.summary[grepl("mse",results.summary$technique),] 
+
+color <- "steelblue"
+
+## plot mse values
+theme_set(theme_light())
+g <- ggplot(mse.summary, aes(x=size,y=mean)) 
+g <- g +  geom_line(colour=color)
+g <- g + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01,colour=color) 
+g <- g + geom_point(size=3.5,colour=color)
+g <- g + labs(x="Size", y="MSE")
+g <- g + theme(text = element_text(size=22,face="bold"),
+               axis.line = element_line(colour = 'black', size = 0.7))
+g <- g + theme(legend.position = "none")
+plot(g)
+
+## select accuracy values for plot
+rsq.summary <- results.summary[grepl("r_sq",results.summary$technique),] 
+
+## plot rsq values
+g1 <- ggplot(rsq.summary, aes(x=size,y=mean)) 
+g1 <- g1 +  geom_line(colour=color)
+g1 <- g1 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01,colour=color) 
+g1 <- g1 + geom_point(size=3.5,colour=color)
+g1 <- g1 + labs(x="Size", y="R^2")
+g1 <- g1 + theme(text = element_text(size=22,face="bold"),
+                 axis.line = element_line(colour = 'black', size = 0.7))
+g1 <- g1 + theme(legend.position = "none")
+plot(g1)
+
+time.summary <- results.summary[grepl("time",results.summary$technique),]
+
+## plot rsq values
+g2 <- ggplot(time.summary, aes(x=size,y=mean)) 
+g2 <- g2 +  geom_line(colour=color)
+g2 <- g2 + geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd), width=.01,colour=color) 
+g2 <- g2 + geom_point(size=3.5,colour=color)
+g2 <- g2 + labs(x="Size", y="Time (secs)")
+g2 <- g2 + theme(text = element_text(size=22,face="bold"),
+                 axis.line = element_line(colour = 'black', size = 0.7))
+g2 <- g2 + theme(legend.position = "none")
+plot(g2)
+
+grid.arrange(g,g1,g2,nrow=1)
+
+#########################################################################################
+
+nsims <-30
+epsilon <- seq(0,1,0.1)
+
+input.p <- input[,-nearZeroVar(input)]
+results <- matrix(0,nsims*length(epsilon),2)
+results <- as.data.frame(results)
+colnames(results) <- c("mse","epsilon") 
+
+for (i in 1:length(epsilon)) {
+        for (j in 1:nsims) {
+                train <- createDataPartition(output,p=0.9,list=FALSE)
+                svm <- svm(x = input.p[train,],y = output[train],kernel = "radial",
+                           epsilon=epsilon[i])
+                svm_pred <- predict(svm,newdata = input.p[-train,])
+                
+                index <- (i-1)*nsims + j
+                results$epsilon[index] <- epsilon[i]
+                results$mse[index] <- sqrt(mean((svm_pred - output[-train])^2)) 
+        }
+}
+
+ggplot(results, aes(x=epsilon,y=mse,group=epsilon)) + geom_boxplot()
+
+## calculating mean of mse and R^2 values
+means <- with(results,aggregate(mse,list(epsilon),mean) )
+## standard deviations of mse and R^2 values
+sd <- with(results, aggregate(mse,list(epsilon),sd) )
+results.summary <- merge(means,sd,by=c("Group.1"))
+colnames(results.summary) <- c("size","technique","mean","sd")
+results.summary
+
