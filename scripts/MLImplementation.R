@@ -33,7 +33,8 @@ drop <- c("Expediente",
           "DeltaCD4_W52",
           "CD4TCabove200_W052",
           "CD4TCabove350_W052",
-          "Numero_consecutivo")
+          "Numero_consecutivo",
+          "CD4_S52")
 
 ## removing list of variables
 input <- data[,!(colnames(data)%in%drop)]
@@ -47,123 +48,7 @@ input.df <- as.data.frame(input)
 ## output definition
 output <- data$DeltaCD4_W52
 
-###########################################################################################
-## mtry variation
 
-## perform cforest with mtry variation
-forestmtry <- function(output,
-                       input,
-                       nsims=30,
-                       method="randomForest",
-                       mtryInterval=seq(2,10,1)) {
-        
-        if ( class(input) == "matrix" ) {
-                input <- as.data.frame(input)
-        } 
-        if ( class(input) != "data.frame") {
-                stop("Input must be a data.frame or matrix")
-        }
-        
-        if ( ! method %in% c("cforest","randomForest") ) {
-                stop("Method must be 'cforest' or 'randomForest'")
-        }
-        
-        results <- matrix(0,nsims*length(mtryInterval),3)
-        results <- as.data.frame(results)
-        colnames(results) <- c("Accuracy","mtry","performance")
-        
-        for (i in 1:length(mtryInterval)){
-                for (j in 1:nsims) {
-                        
-                        if ( method == "cforest" ) {
-                                ## simulation parameters
-                                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
-                                cforestControl <- cforest_control(teststat = "quad",
-                                                                  testtype = "Univ", 
-                                                                  mincriterion = 0, 
-                                                                  ntree = 50, 
-                                                                  mtry = mtryInterval[i], ## variation
-                                                                  replace = FALSE)
-                                
-                                
-                                ## perform simulation
-                                initialTime <- Sys.time()
-                                forest <- cforest(output[intrain]~.,
-                                                  data=as.data.frame(input[intrain,]),
-                                                  control = cforestControl)
-                                finalTime <- Sys.time() - initialTime
-                                
-                                ## perform prediction on test sample
-                                forest.pred <- predict(forest,
-                                                       newdata=input[-intrain,])
-                                mss <- mean((forest.pred-output[-intrain])^2)
-                                mse <- sqrt(mss)
-                        }
-                        
-                        if ( method == "randomForest" ) {
-                                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
-                                
-                                ## perform randomForest
-                                initialTime <- Sys.time()
-                                rforest <- randomForest(output[intrain]~.,
-                                                        data=input[intrain,])
-                                finalTime <- Sys.time() - initialTime
-                                
-                                ## perform predictions
-                                rforest.pred <- predict(rforest,
-                                                        newdata = input[-intrain,])
-                                
-                                ## calcualte mse values
-                                mss <- mean((rforest.pred-output[-intrain])^2)
-                                mse <- sqrt(mss)
-                                mse
-                                
-                        }
-                        
-                        ## index to store simulation data
-                        index <- (nsims*(i-1)) + j
-                        
-                        ## storing results
-                        results[index,1] <- mse
-                        results[index,2] <- mtryInterval[i]
-                        results[index,3] <- finalTime
-                } 
-        }
-        
-        ## plot accuracy test
-        theme_set(theme_bw())
-        g <- ggplot(results, aes(x=mtry,y=Accuracy)) + geom_point() 
-        g <- g + geom_boxplot(aes(group=mtry,fill="steelblue"))
-        g <- g + theme(legend.position = "none") 
-        g <- g + labs(title =paste(method,"- Accuracy"),y="MSE")
-        g <- g + theme(title = element_text(face="bold"),
-                       axis.title.x = element_text(face="bold"),
-                       axis.title.y = element_text(face="bold"))
-        
-        ## plot performance time
-        theme_set(theme_bw())
-        g1 <- ggplot(results, aes(x=mtry,y=performance)) + geom_point() 
-        g1 <- g1 + geom_boxplot(aes(group=mtry,       ## x axis cathegorical values  
-                                    fill=132))        ## 132 -> steelblue color
-        g1 <- g1 + theme(legend.position = "none")    ## removing legend
-        g1 <- g1 + labs(title =paste(method,"- Waiting time"),
-                        y="Time (secs)")
-        g1 <- g1 + theme(title = element_text(face="bold"),  
-                         axis.title.x = element_text(face="bold"),
-                         axis.title.y = element_text(face="bold"))
-        
-        grid.arrange(g,g1,nrow=1)
-        
-} 
-
-## performs mtry parameter variation in randomForest
-jpeg("../figures/randforest_mtry_nsims=100_method=RandomForest.jpg")
-forestmtry(output = output,
-           input = input,
-           nsims = 100,
-           method = "randomForest",
-           mtryInterval = seq(2,10,1))      ## parameters values 
-dev.off()
 
 ##################################################################################
 ## randomForest evaluation                                                      ##
@@ -932,7 +817,7 @@ results <- as.data.frame(results)
 head(results)
 
 
-## iteration of lasso, ridge, and random forest regression simulations
+## iteration of ridge regression simulations
 for ( i in 1:length(sizes) ) {
         for ( j in 1:n_sims ) {
                 
@@ -1030,34 +915,89 @@ grid.arrange(g,g1,g2,nrow=1)
 
 #########################################################################################
 
-nsims <-30
-epsilon <- seq(0,1,0.1)
+nsims <- 300
 
-input.p <- input[,-nearZeroVar(input)]
-results <- matrix(0,nsims*length(epsilon),2)
+results <- matrix(0,nsims,3)
 results <- as.data.frame(results)
-colnames(results) <- c("mse","epsilon") 
+colnames(results) <- c("rforest","lasso","ridge")
 
-for (i in 1:length(epsilon)) {
-        for (j in 1:nsims) {
-                train <- createDataPartition(output,p=0.9,list=FALSE)
-                svm <- svm(x = input.p[train,],y = output[train],kernel = "radial",
-                           epsilon=epsilon[i])
-                svm_pred <- predict(svm,newdata = input.p[-train,])
-                
-                index <- (i-1)*nsims + j
-                results$epsilon[index] <- epsilon[i]
-                results$mse[index] <- sqrt(mean((svm_pred - output[-train])^2)) 
-        }
+for (i in 1:nsims) {
+        
+        ################################################################################
+        ## random forest
+        
+        ## getting train subset
+        intrain <- createDataPartition(output,p = 0.9,list = FALSE)
+        
+        ## perform randomForest
+        rforest <- randomForest(output[intrain]~.,
+                                data=input[intrain,],
+                                mtry=8,
+                                ntree=300)
+        ## perform predictions
+        rforest.pred <- predict(rforest,
+                                newdata = input[-intrain,])
+        ## calcualte mse values
+        mssForest <- mean((rforest.pred-output[-intrain])^2)
+        mseForest <- sqrt(mssForest)
+        
+        ###############################################################################
+        ## lasso
+        
+        intrain <- createDataPartition(output,p = 0.85,list = FALSE)
+        
+        ## perform lasso
+        lasso <- cv.glmnet(x=input[intrain,],y = output[intrain])
+        
+        ## predictions
+        y_predicted <- predict(lasso, newx=input[-intrain,],
+                               c=lasso$lambda.min,
+                               type="response")
+        
+        ## gettind accuracy mse values
+        mssLasso <- mean((y_predicted-output[-intrain])^2)
+        mseLasso <- sqrt(mssLasso)
+        
+        ###############################################################################
+        ## Ridge regression
+        
+        train <- createDataPartition(output,p=0.9,list=FALSE)
+        
+        ## Ridge regression
+        ridge <- cv.glmnet(x=input[train,],y=output[train],
+                           alpha=0)
+        
+        ## performing predictions
+        y_predicted_r <- predict(ridge, newx=input[-train,],
+                                 c=lasso$lambda.min,
+                                 type="response")
+        
+        ## ridge regression mse 
+        mssRidge <- mean((y_predicted_r-output[-train])^2)
+        mseRidge <- sqrt(mssRidge)
+        
+        
+        ## storing results
+        results[i,"rforest"] <- mseForest
+        results[i,"lasso"] <- mseLasso
+        results[i,"ridge"] <- mseRidge
+        
 }
 
-ggplot(results, aes(x=epsilon,y=mse,group=epsilon)) + geom_boxplot()
+write.csv(results,"../data/benchmark.csv")
 
-## calculating mean of mse and R^2 values
-means <- with(results,aggregate(mse,list(epsilon),mean) )
-## standard deviations of mse and R^2 values
-sd <- with(results, aggregate(mse,list(epsilon),sd) )
-results.summary <- merge(means,sd,by=c("Group.1"))
-colnames(results.summary) <- c("size","technique","mean","sd")
-results.summary
+results.m <- melt(results)
+head(results.m)
+
+## plot mse values
+theme_set(theme_light())
+g <- ggplot(results.m, aes(x=variable,y=log(value))) + geom_point() 
+g <- g + geom_boxplot(aes(group=variable,fill=variable))
+g <- g + theme( # legend.position = "none",
+        text = element_text(size = 26,face = "bold")) 
+g <- g + labs(x="",y="log(MSE)")
+g <- g + theme(title = element_text(face="bold"),
+               axis.title.x = element_text(face="bold"),
+               axis.title.y = element_text(face="bold"))
+g
 
