@@ -96,7 +96,7 @@ for (i in 1:length(mtryInterval)){
         } 
 }
 
-#write.csv(results,"../data/rforestMtryVariation.csv",row.names = FALSE)
+write.csv(results,"../data/rforestMtryVariation.csv",row.names = FALSE)
 #results <- read.csv("../figures/rforestMtryVariation.csv")
 
 ## plot accuracy test
@@ -105,7 +105,7 @@ g <- ggplot(results, aes(x=mtry,y=Accuracy)) + geom_point()
 g <- g + geom_boxplot(aes(group=mtry,fill="steelblue"))
 g <- g + theme(legend.position = "none",      ## remove legends
                text = element_text(size=26,face="bold")) 
-g <- g + labs(title =paste("rforest - Accuracy"),y="MSE")
+g <- g + labs(y="MSE")
 g <- g + theme(title = element_text(face="bold"),
                axis.title.x = element_text(face="bold"),
                axis.title.y = element_text(face="bold"))
@@ -117,15 +117,14 @@ g1 <- g1 + geom_boxplot(aes(group=mtry,       ## x axis cathegorical values
                             fill=132))        ## 132 -> steelblue color
 g1 <- g1 + theme(legend.position = "none",
                  text = element_text(size=26,face="bold"))    
-g1 <- g1 + labs(title =paste("rforest - time"),
-                y="Time (secs)")
+g1 <- g1 + labs(y="Time (secs)")
 g1 <- g1 + theme(title = element_text(face="bold"),  
                  axis.title.x = element_text(face="bold"),
                  axis.title.y = element_text(face="bold"))
 
-jpeg("../figures/rforestMtryVariation.jpg")
+
 grid.arrange(g,g1,nrow=1)
-dev.off()
+
 
 #######################################################################################
 ## ntree parameter variation in randomForest method
@@ -166,7 +165,7 @@ for (i in 1:length(ntreeInterval)){
         } 
 }
 
-#write.csv(results,"../data/rforestNtreeVariation.csv",row.names = FALSE)
+write.csv(results,"../data/rforestNtreeVariation.csv",row.names = FALSE)
 #results <- read.csv("../data/rforestNtreeVariation.csv")
 
 ## plot Accuracy MSE values
@@ -175,7 +174,7 @@ g <- ggplot(results, aes(x=ntree,y=Accuracy)) + geom_point()
 g <- g + geom_boxplot(aes(group=ntree,fill="steelblue"))
 g <- g + theme(legend.position = "none",
                text = element_text(size=26,face="bold")) 
-g <- g + labs(title =paste("rforest - Accuracy"),y="MSE")
+g <- g + labs(y="MSE")
 g <- g + theme(title = element_text(face="bold"),
                axis.title.x = element_text(face="bold"),
                axis.title.y = element_text(face="bold"))
@@ -186,15 +185,14 @@ g1 <- g1 + geom_boxplot(aes(group=ntree,       ## x axis cathegorical values
                             fill=132))        ## 132 -> steelblue color
 g1 <- g1 + theme(legend.position = "none",
                  text = element_text(size=26,face="bold"))    ## removing legend
-g1 <- g1 + labs(title =paste("rforest - Waiting time"),
-                y="Time (secs)")
+g1 <- g1 + labs(y="Time (secs)")
 g1 <- g1 + theme(title = element_text(face="bold"),  
                  axis.title.x = element_text(face="bold"),
                  axis.title.y = element_text(face="bold"))
 
-jpeg("../figures/rforestNtreeVriation.jpg")
+
 grid.arrange(g,g1,nrow=1)
-dev.off()
+
 
 
 ############################################################################################
@@ -257,7 +255,7 @@ g <- ggplot(results, aes(x=mtry,y=Accuracy)) + geom_point()
 g <- g + geom_boxplot(aes(group=mtry,fill="steelblue"))
 g <- g + theme(legend.position = "none",      ## remove legends
                text = element_text(size=26,face="bold")) 
-g <- g + labs(title =paste("cforest - Accuracy"),y="MSE")
+g <- g + labs(y="MSE")
 g <- g + theme(title = element_text(face="bold"),
                axis.title.x = element_text(face="bold"),
                axis.title.y = element_text(face="bold"))
@@ -269,15 +267,13 @@ g1 <- g1 + geom_boxplot(aes(group=mtry,       ## x axis cathegorical values
                             fill=132))        ## 132 -> steelblue color
 g1 <- g1 + theme(legend.position = "none",
                  text = element_text(size=26,face="bold"))    
-g1 <- g1 + labs(title =paste("cforest - time"),
-                y="Time (secs)")
+g1 <- g1 + labs(y="Time (secs)")
 g1 <- g1 + theme(title = element_text(face="bold"),  
                  axis.title.x = element_text(face="bold"),
                  axis.title.y = element_text(face="bold"))
 
-jpeg("../figures/cforestMtryVariation.jpg")
 grid.arrange(g,g1,nrow=1)
-dev.off()
+
 
 ############################################################################################
 ## ntree parameter variation in cforest
@@ -325,7 +321,7 @@ for (i in 1:length(ntreeInterval)){
         } 
 }
 
-#write.csv(results,"../data/cforestNtreeVariation.csv",row.names = FALSE)
+write.csv(results,"../data/cforestNtreeVariation.csv",row.names = FALSE)
 #results <- read.csv("../data/cforestNtreeVariation.csv")
 
 ## plot Accuracy MSE values
@@ -333,7 +329,7 @@ g <- ggplot(results, aes(x=ntree,y=Accuracy)) + geom_point()
 g <- g + geom_boxplot(aes(group=ntree,fill="steelblue"))
 g <- g + theme(legend.position = "none",
                text = element_text(size = 26,face = "bold")) 
-g <- g + labs(title =paste("cforest - Accuracy"),y="MSE")
+g <- g + labs(y="MSE")
 g <- g + theme(title = element_text(face="bold"),
                axis.title.x = element_text(face="bold"),
                axis.title.y = element_text(face="bold"))
@@ -344,135 +340,12 @@ g1 <- g1 + geom_boxplot(aes(group=ntree,       ## x axis cathegorical values
                             fill=132))        ## 132 -> steelblue color
 g1 <- g1 + theme(legend.position = "none",
                  text = element_text(size = 26,face = "bold")) 
-g1 <- g1 + labs(title =paste("rforest - Waiting time"),
-                y="Time (secs)")
+g1 <- g1 + labs(y="Time (secs)")
 g1 <- g1 + theme(title = element_text(face="bold"),  
                  axis.title.x = element_text(face="bold"),
                  axis.title.y = element_text(face="bold"))
 
-jpeg("../figures/cforestNtreeVariation.jpg")
 grid.arrange(g,g1,nrow=1)
-dev.off()
-
-############################################################################################
-## ntree paramter variation
-
-## perform cforest with ntree variation
-forestntree <- function(output,
-                        input,
-                        method="randomForest",
-                        nsims=30,
-                        mtry=3,
-                        ntreeInterval=seq(20,100,10)) {
-        
-        if ( class(input) == "matrix" ) {
-                input <- as.data.frame(input)
-        } 
-        if ( class(input) != "data.frame") {
-                warning("Input must be a data.frame or matrix")
-        }
-        if ( ! method %in% c("cforest","randomForest") ) {
-                stop("Method must be 'cforest' or 'randomForest'")
-        }
-        
-        results <- matrix(0,nsims*length(ntreeInterval),3)
-        results <- as.data.frame(results)
-        colnames(results) <- c("Accuracy","ntree","performance")
-        
-        for (i in 1:length(ntreeInterval)){
-                for (j in 1:nsims) {
-                        
-                        ## Use cforest algorithm
-                        if ( method == "cforest" ) {
-                                ## initial settings
-                                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
-                                cforestControl <- cforest_control(teststat = "quad",
-                                                                  testtype = "Univ", 
-                                                                  mincriterion = 0, 
-                                                                  ntree = ntreeInterval[i], 
-                                                                  mtry = 3,
-                                                                  replace = FALSE)
-                                
-                                ## perform cforest
-                                initialTime <- Sys.time()
-                                forest <- cforest(output[intrain]~.,data=input[intrain,],
-                                                  control = cforestControl)
-                                finalTime <- Sys.time() - initialTime
-                                
-                                ## calculate predictions
-                                forest.pred <- predict(forest,newdata=input[-intrain,])
-                                
-                                ## calculate mse
-                                mss <- mean((forest.pred-output[-intrain])^2)
-                                mse <- sqrt(mss)
-                        }
-                        
-                        ## Use randomForest method
-                        if ( method == "randomForest" ) {
-                                intrain <- createDataPartition(output,p = 0.8,list = FALSE)
-                                initialTime <- Sys.time()
-                                forest <- randomForest(output[intrain]~.,
-                                                       data=input[intrain,],
-                                                       ntree = ntreeInterval[i])
-                                finalTime <- Sys.time() - initialTime
-                        }
-                        
-                        ## perform prediction on test sample
-                        forest.pred <- predict(forest,
-                                               newdata=input[-intrain,])
-                        mss <- mean((forest.pred-output[-intrain])^2)
-                        mse <- sqrt(mss)
-                        
-                        ## index to store simulation data
-                        index <- (nsims*(i-1)) + j
-                        
-                        ## storing results
-                        results[index,1] <- mse
-                        results[index,2] <- ntreeInterval[i]
-                        results[index,3] <- finalTime
-                } 
-        }
-        
-
-        ## plot Accuracy MSE values
-        theme_set(theme_bw())
-        g <- ggplot(results, aes(x=ntree,y=Accuracy)) + geom_point() 
-        g <- g + geom_boxplot(aes(group=ntree,fill="steelblue"))
-        g <- g + theme(legend.position = "none") 
-        g <- g + labs(title =paste(method,"- Accuracy"),y="MSE")
-        g <- g + theme(title = element_text(face="bold"),
-                       axis.title.x = element_text(face="bold"),
-                       axis.title.y = element_text(face="bold"))
-        
-        ## plot waiting times
-        theme_set(theme_bw())
-        g1 <- ggplot(results, aes(x=ntree,y=performance)) + geom_point() 
-        g1 <- g1 + geom_boxplot(aes(group=ntree,       ## x axis cathegorical values  
-                                    fill=132))        ## 132 -> steelblue color
-        g1 <- g1 + theme(legend.position = "none")    ## removing legend
-        g1 <- g1 + labs(title =paste(method,"- Waiting time"),
-                        y="Time (secs)")
-        g1 <- g1 + theme(title = element_text(face="bold"),  
-                         axis.title.x = element_text(face="bold"),
-                         axis.title.y = element_text(face="bold"))
-        
-        grid.arrange(g,g1,nrow=1)
-        
-}
-
-## performs ntree variation in randomForest method
-jpeg("../figures/randforest_ntree_nsims=100_method=RandomForest.jpg")
-forestntree(output = output,input = input,
-           nsims = 100,method = "randomForest",
-           ntreeInterval = seq(20,100,10))   ## parameter values
-dev.off()
-
-## performs ntree variation in cforest method
-jpeg("../figures/randforest_ntree_nsims=100_method=cforest.jpg")
-forestntree(output = output,input = input,
-           nsims = 100,method = "cforest",
-           ntreeInterval = seq(20,100,10))   ## parameter values
-dev.off()
 
 
 ######################################################################################
@@ -561,7 +434,7 @@ for ( i in 1:length(p) ) {
 
 ## stroing results
 write.csv(results,"../data/forestTrainSizes.csv",row.names = FALSE)
-results <- read.csv("../data/forestTrainSizes.csv")
+#results <- read.csv("../data/forestTrainSizes.csv")
 
 ## preprocessing previuos results
 results <- read.csv("../data/forestTrainSizes.csv")
@@ -577,7 +450,6 @@ colnames(results.summary) <- c("size","technique","mean","sd")
 
 accuracy <- results.summary[grepl("accuracy",results.summary$technique),]
 
-theme_set(theme_light())
 
 ## plotting accuracy
 g <- ggplot(accuracy, aes(x=size,y=mean,colour=technique)) 
@@ -603,15 +475,13 @@ g1 <- g1 + theme(text = element_text(size=26,face="bold"),
 g1 <- g1 + theme(legend.position = "none")
 
 ## saving plot
-jpeg("../figures/forestTrainSizes.jpg")
 grid.arrange(g,g1,nrow=1)
-dev.off()
 
 
 ##################################################################################
 ##############################################################################
 ## Random forest iteration
-## evaluation of variabiblity of importance of variables
+## evaluation of variabibility of importance of variables
 ## in randomForest method
 
 n.sim <- 100
@@ -627,15 +497,15 @@ for (i in 1:n.sim) {
         ## perform random forest
         forest <- randomForest(x = input.df[intrain,],
                                y = output[intrain],importance = TRUE,
-                               ntree = 400,
-                               mtry = 8)
+                               ntree = 150,
+                               mtry = 7)
         
         ## store data
         results_forest[i,] <- importance(forest,scale=FALSE)[,"%IncMSE"]
 }
 
 # saving data
-#write.csv(results_forest,"../data/importanceForestSims.csv",row.names = FALSE)
+write.csv(results_forest,"../data/importancerForest.csv",row.names = FALSE)
 #results_forest <- read.csv("../data/importanceForestSims.csv")
 
 ## calculating mean and sd 
@@ -655,11 +525,10 @@ write.csv(forest.summary,"../data/rankingRForest.csv")
 ## evaluation of variabiblity of importance of variables
 ## in randomForest method
 
-n.sim <- 3
+n.sim <- 100
 
 results_cforest <- matrix(0,n.sim,ncol(input))
 colnames(results_cforest) <- colnames(input)
-results_cforest
 
 for (i in 1:n.sim) {
         ## initial parameters
@@ -667,7 +536,7 @@ for (i in 1:n.sim) {
         cforestControl <- cforest_control(teststat = "quad",
                                           testtype = "Univ", 
                                           mincriterion = 0, 
-                                          ntree = 300, 
+                                          ntree = 100, 
                                           mtry = 6,
                                           replace = FALSE)
         
@@ -680,7 +549,7 @@ for (i in 1:n.sim) {
 }
 
 # saving data
-#write.csv(results_forest,"../data/importanceForestSims.csv",row.names = FALSE)
+write.csv(results_forest,"../data/importancecForest.csv",row.names = FALSE)
 #results_forest <- read.csv("../data/importanceForestSims.csv")
 
 ## calculating mean and sd 
@@ -693,6 +562,9 @@ cforest.summary <- arrange(cforest.summary,desc(mean_cforest))
 cforest.summary <- mutate(cforest.summary,ranking=1:nrow(cforest.summary))
 
 write.csv(cforest.summary,"../data/rankingcForest.csv")
+
+rankingVarImp <- merge(forest.summary,cforest.summary)
+write.csv(rankingVarImp,"../data/rankingVarImp.csv",row.names = FALSE)
 
 ###################################################################################
 ###################################################################################
@@ -773,7 +645,7 @@ g <- g + labs(x="Size", y="MSE")
 g <- g + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
 g <- g + theme(legend.position = "none")
-plot(g)
+
 
 ## select accuracy values for plot
 rsq.summary <- results.summary[grepl("r_sq",results.summary$technique),] 
@@ -787,7 +659,7 @@ g1 <- g1 + labs(x="Size", y="R^2")
 g1 <- g1 + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
 g1 <- g1 + theme(legend.position = "none")
-plot(g1)
+
 
 time.summary <- results.summary[grepl("time",results.summary$technique),]
 
@@ -800,7 +672,7 @@ g2 <- g2 + labs(x="Size", y="Time (secs)")
 g2 <- g2 + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
 g2 <- g2 + theme(legend.position = "none")
-plot(g2)
+
 
 grid.arrange(g,g1,g2,nrow=1)
 
@@ -814,7 +686,6 @@ sizes <- seq(0.5,0.9,0.05)
 results <- matrix(0,length(sizes)*n_sims,4)
 colnames(results) <- c("mse","r_sq","time","size")
 results <- as.data.frame(results)
-head(results)
 
 
 ## iteration of ridge regression simulations
@@ -851,7 +722,6 @@ for ( i in 1:length(sizes) ) {
                 
         }
 }
-head(results)
 
 write.csv(results,"../data/ridgeRegTrainSizes.csv",
           row.names = FALSE)
@@ -882,7 +752,7 @@ g <- g + labs(x="Size", y="MSE")
 g <- g + theme(text = element_text(size=22,face="bold"),
                axis.line = element_line(colour = 'black', size = 0.7))
 g <- g + theme(legend.position = "none")
-plot(g)
+
 
 ## select accuracy values for plot
 rsq.summary <- results.summary[grepl("r_sq",results.summary$technique),] 
@@ -896,7 +766,7 @@ g1 <- g1 + labs(x="Size", y="R^2")
 g1 <- g1 + theme(text = element_text(size=22,face="bold"),
                  axis.line = element_line(colour = 'black', size = 0.7))
 g1 <- g1 + theme(legend.position = "none")
-plot(g1)
+
 
 time.summary <- results.summary[grepl("time",results.summary$technique),]
 
@@ -909,7 +779,7 @@ g2 <- g2 + labs(x="Size", y="Time (secs)")
 g2 <- g2 + theme(text = element_text(size=22,face="bold"),
                  axis.line = element_line(colour = 'black', size = 0.7))
 g2 <- g2 + theme(legend.position = "none")
-plot(g2)
+
 
 grid.arrange(g,g1,g2,nrow=1)
 
@@ -932,8 +802,8 @@ for (i in 1:nsims) {
         ## perform randomForest
         rforest <- randomForest(output[intrain]~.,
                                 data=input[intrain,],
-                                mtry=8,
-                                ntree=300)
+                                mtry=7,
+                                ntree=150)
         ## perform predictions
         rforest.pred <- predict(rforest,
                                 newdata = input[-intrain,])
@@ -987,7 +857,6 @@ for (i in 1:nsims) {
 write.csv(results,"../data/benchmark.csv")
 
 results.m <- melt(results)
-head(results.m)
 
 ## plot mse values
 theme_set(theme_light())
