@@ -856,6 +856,8 @@ for (i in 1:nsims) {
 
 write.csv(results,"../data/benchmark.csv")
 
+results <- read.csv("../data/benchmark.csv")
+
 results.m <- melt(results)
 
 ## plot mse values
@@ -870,3 +872,35 @@ g <- g + theme(title = element_text(face="bold"),
                axis.title.y = element_text(face="bold"))
 g
 
+##################################################################################
+##  lasso coefficients
+
+nsims <- 100
+results <- matrix(0,nsims,ncol(input)+1)
+results <- as.data.frame(results)
+colnames(results) <- c("Intercept",colnames(input))
+
+for (i in 1:nsims) {
+        ## lasso
+        
+        intrain <- createDataPartition(output,p = 0.85,list = FALSE)
+        
+        ## perform lasso
+        lasso <- cv.glmnet(x=input[intrain,],y = output[intrain])
+        
+        ## predictions
+        results[i,] <- coef(lasso)
+}
+
+write.csv(results,"../data/lassoCoef.csv",row.names=FALSE)
+
+means <- apply(results,2,mean)
+sds <- apply(results,2,sd)
+
+lasso.coef <- cbind(means,sds)
+lasso.coef <- as.data.frame(lasso.coef)
+lasso.coef <- lasso.coef[order(-abs(lasso.coef$means)),]
+lasso.coef <- lasso.coef[rownames(lasso.coef)!="Intercept",]
+
+
+write.csv(lasso.coef,"../data/lassoCoefFormtatted.csv",row.names = TRUE)
