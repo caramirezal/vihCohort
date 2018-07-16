@@ -1,5 +1,5 @@
 library(dplyr)
-library(randomForest)
+library(ggplot2)
 
 ## reading data as character variables for preprocessing
 data <- read.csv("../data/TablaCompletaCohorteINER_C08-04_20170630.csv",
@@ -21,57 +21,42 @@ for (i in 1:ncol(data)) {
         } 
 }
 
-## drop observations with no output
-data.s <- data[!is.na(data$Delta_CD4_year1),] 
-dim(data.s)
 
-## Inspect the number of variables with at least some threshold number 
-## of complete cases
-numKeepVar <- function(df) {
-        int <- 0:nrow(df)
-        result <- rep(0,length(int))
-        for (i in int) {
-                result[i] <- sum(sapply(df,function(x) i <= sum(!is.na(x))))
-        }
-        result
+###################################################################################
+## reading top 20 coeficients from lasso
+coeficients <- read.csv("../data/lassoCoefFormtatted.csv")
+
+## selecting top 20 coefficients from lasso 
+sharedTop20 <- coeficients$X[1:20][sapply(coeficients$X[1:20],function(x) x %in% names(data) )]
+data.filtered <- data[,c(as.character(sharedTop20),"Delta_CD4_year1")]
+
+## selecting complete cases 
+data.complete <- data.filtered[complete.cases(data.filtered),]
+dim(data.complete) 
+
+## vector to store prediction values for validation
+results <- numeric(nrow(data.complete))
+
+#################################################################################
+## Linear regression Model
+
+## running Leave-One-Out (LOOC) Validation
+for (i in 1:nrow(data.complete)) {
+        model <- lm(Delta_CD4_year1~.,data=data.complete[-i,])
+        results[i] <- predict(model,newdata = data.complete[i,])
 }
-keepVar <- numKeepVar(data.s)
-plot(0:nrow(data.s),
-     keepVar,
-     xlab = "Complete cases",
-     ylab = "Variables", 
-     type = "l",
-     col="steelblue",
-     lwd=2)
 
+mss <- mean((data.complete$Delta_CD4_year1-results)^2)
+mse <- sqrt(mss)
+mse
 
-
-## keep variables with more than 2/3 complete cases of the total of observations
-th <- (2/3)*nrow(data.s)
-keep <- sapply(data.s,function(x) th <= sum(!is.na(x))) 
-data.p <- data.s[,keep]
-dim(data.p)
-
-## drop near zero variance columns
-data.p <- data.p[,-nearZeroVar(data.p)]
-dim(data.p)
-
-output <- data.p$Delta_CD4_year1
-
-## list of removed variables
-drop <- c("Expediente",
-          "DeltaCD4W52atleast150",
-          "DeltaCD4_W52",
-          "CD4TCabove200_W052",
-          "CD4TCabove350_W052",
-          "CD4TCabove200_W052",
-          "\xff\xfeNumero_consecutivo",
-          "CD4_S52",
-          "Delta_CD4_year1")
-
-## removing list of variables
-input <- data.p[,!(colnames(data.p)%in%drop)]
-
-
-
-
+## plot data
+theme_set(theme_light())
+linReg <- data.frame("observed"=data.complete$Delta_CD4_year1,
+                     "predicted"=results)
+g <- ggplot(data = linReg, aes(x=observed,y=predicted))
+g <- g + geom_point(colour="steelblue")
+g <- g + geom_smooth(method = "lm",colour="red")
+g <- g + theme(text=element_text(size = 22,face="bold"))
+g <- g + labs(x="Observed",y="Predicted")
+plot(g)
