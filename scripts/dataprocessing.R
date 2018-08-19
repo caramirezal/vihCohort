@@ -69,4 +69,41 @@ table(data.m$IRIS_manifestation_2)
 str(data.m)
 dim(data.m)
 
-write.csv(data.m,"../data/cleandata.csv",row.names = FALSE)
+## Standardize names to English
+## Gender
+data.m$Gender <- sapply(data.m$Gender, 
+                        function(x) ifelse(x=="Hombre","Male","Female"))
+## treatment change
+data.m$TxChangeJustification <- sapply(data.m$TxChangeJustification, 
+                                       function(x) ifelse(x=="Rash_generalizado",
+                                                          "generalized_rash",x))
+data.m$TxChangeJustification <- sapply(data.m$TxChangeJustification, 
+                                       function(x) ifelse(x=="Resistencia_K103N.K103S",
+                                                          "Resistance_K103N.K103S",x))
+data.m$TxChangeJustification <- sapply(data.m$TxChangeJustification, 
+                                       function(x) ifelse(x=="",
+                                                          "no_change",x))
+## IRIS manifestation
+data.m$IRIS_manifestation_2 <- sapply(data.m$IRIS_manifestation_2,
+                                      function(x) ifelse(x=="Dermatitis_perivascular",
+                                                         "perivascular_dermatitis",x))
+data.m$IRIS_manifestation_2 <- sapply(data.m$IRIS_manifestation_2,
+                                      function(x) ifelse(x=="Molusco_contagioso",
+                                                         "molluscum contagiosum",x))
+data.m$IRIS_manifestation_2 <- sapply(data.m$IRIS_manifestation_2,
+                                      function(x) ifelse(x=="Ninguno",
+                                                         "none",x))
+## IRIS panel
+data.m <- rename(data.m, with_without_IRIS=ConSinSIRI_panel)
+data.m$with_without_IRIS <- sapply(data.m$with_without_IRIS,
+                                   function(x) ifelse(x=="Con","with","without"))
+## antiHCV_
+data.m$Abs_antiHCV_S0 <- sapply(data.m$Abs_antiHCV_S0,
+                                function(x) ifelse(x=="Negativo", "negative","positive"))
+## hepatitis basal 
+data.m <- rename(data.m, active_basal_hepatitis=Hepatitis_basal_activa)
+data.m$active_basal_hepatitis <- sapply(data.m$active_basal_hepatitis,
+                                        function(x) ifelse(x=="No","no","yes"))
+
+
+write.csv(data.m, "../data/cleandata.csv", row.names = FALSE)
