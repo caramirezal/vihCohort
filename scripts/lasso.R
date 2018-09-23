@@ -9,12 +9,14 @@ str(vih_data)
 dim(vih_data[!complete.cases(vih_data),])
 
 ## processing data for lasso
-input <- select(vih_data, -Delta_CD4_year1)
+input <- vih_data[, ! sapply(vih_data, function(x) class(x)=="character") ]
+input <- select(input, -Delta_CD4_year1)
 input <- select(input, -CD4_S0)
 input <- select(input, -CD4_S52)
 input <- model.matrix(~., data = input, 
                       contrasts.arg = sapply(input, is.factor))
-head(input)
+write.table(input, "../data/model_matrix.tsv", sep = "\t")
+str(input)
 output <- vih_data$Delta_CD4_year1
 
 ######################################################################################
@@ -57,4 +59,4 @@ summary_coefs <- data.frame("coefficient"=colnames(lasso_coefs),
                             "mean"=mean_coef,
                             "sd"=sd_coef) %>%
                         arrange(desc(abs(mean)))
-write.csv(summary_coefs, "../data/lasso.csv", row.names=FALSE)
+write.csv(summary_coefs, "../data/lasso_only_numeric.csv", row.names=FALSE)
