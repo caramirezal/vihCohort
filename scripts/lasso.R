@@ -3,18 +3,19 @@ library(glmnet)
 library(dplyr)
 library(ggplot2)
 
-vih_data <- read.csv("../data/cleandata.csv", stringsAsFactors = FALSE)
+vih_data <- read.csv("../data/cleandata.csv", stringsAsFactors = TRUE)
 str(vih_data)
 ## No NA values are presented in data
 dim(vih_data[!complete.cases(vih_data),])
 
 ## processing data for lasso
 input <- vih_data[, ! sapply(vih_data, function(x) class(x)=="character") ]
-input <- select(input, -Delta_CD4_year1)
+input <- select(vih_data, -Delta_CD4_year1)
 input <- select(input, -CD4_S0)
 input <- select(input, -CD4_S52)
-input <- model.matrix(~., data = input, 
-                      contrasts.arg = sapply(input, is.factor))
+input <- model.matrix(~., data = input)
+str(input)
+head(input)
 write.table(input, "../data/model_matrix.tsv", sep = "\t")
 str(input)
 output <- vih_data$Delta_CD4_year1
