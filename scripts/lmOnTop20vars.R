@@ -31,9 +31,11 @@ res <- data.frame("value"= vih_data$output, "prediction"= preds)
 theme_set(theme_light())
 g <- ggplot(res, aes(x=value, y=prediction)) + 
         geom_point(fill="black", colour="white", 
-                   size= 2.5, pch=21, alpha=0.3) + 
+                   size= 2.5, pch=21, alpha=0.9) + 
         labs(x="True Value", y="Prediction") +
         theme(text = element_text(face="bold", size = 18)) +
         geom_smooth(method = "lm")
 plot(g)
+
+summary(lModel)
 
