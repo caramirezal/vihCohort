@@ -3,17 +3,21 @@ library(glmnet)
 library(dplyr)
 library(ggplot2)
 
-vih_data <- read.csv("../data/cleandata.csv", stringsAsFactors = TRUE)
+vih_data <- read.csv("../data/cleandata.csv", stringsAsFactors = FALSE)
 str(vih_data)
 ## No NA values are presented in data
 dim(vih_data[!complete.cases(vih_data),])
 
+## binarizing IRIS
+wwiris <- sapply(vih_data$with_without_IRIS, 
+                 function(x) ifelse(x=="with",1,0)) 
+
 ## processing data for lasso
 input <- vih_data[, ! sapply(vih_data, function(x) class(x)=="character") ]
-input <- select(vih_data, -Delta_CD4_year1)
+input <- select(input, -Delta_CD4_year1)
 input <- select(input, -CD4_S0)
 input <- select(input, -CD4_S52)
-input <- model.matrix(~., data = input)
+input <- as.matrix(input)
 str(input)
 head(input)
 write.table(input, "../data/model_matrix.tsv", sep = "\t")
@@ -40,12 +44,14 @@ for (i in 1:nrow(input)) {
 
 ## plot predicted vs target values
 validation <- data.frame("lasso_prediction"=res,
-                         "values"=output)
+                         "values"=output,
+                         "iris"=as.factor(wwiris))
 theme_set(theme_light())
-p <- ggplot(validation, aes(x=values, y=lasso_prediction)) + 
-        geom_point(colour="steelblue", size= 2.5) + 
-        geom_abline(slope = 1,colour="red",size=1) +
-        labs(x="Delta TCD4 values", y="LASSO_prediction") +
+p <- ggplot(validation, aes(x=values, y=lasso_prediction, color= iris)) + 
+        geom_point(size= 2.5) +
+        scale_colour_manual(values=c("black", "green")) +
+        geom_abline(slope = 1, size=1, colour="red") +
+        labs(x="Delta TCD4 values", y="LASSO") +
         theme(text = element_text(face="bold", size = 18))
 plot(p)
 jpeg("../figures/lasso.jpeg")
