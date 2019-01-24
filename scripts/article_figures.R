@@ -260,7 +260,7 @@ plot(p)
 
 
 ##################################################################################
-## figure 2.c. Percentage of CD4 T dynamics
+## 6. % CD4 T dynamics
 ## selecting Percentage of CD4 T columns
 cd4_perc_names <- grep("CD4porcentajeS", names(vih_data), value = TRUE)
 cd4_perc_names
@@ -277,8 +277,9 @@ theme_set(theme_light())
 p <- ggplot(cd4_perc.m, aes(x=variable, y=value)) + 
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21, alpha=0.3) + 
-        labs(x="Week", y="Percentage of CD4 T cells", title = "% CD4 T cells dynamic") +
+        labs(x="Week", y="% CD4 T cells") +
         theme(text = element_text(face="bold", size = 18)) +
+        scale_x_continuous(breaks=c(0,8,12,24,39,52)) +         ## change ticks interval labels
         geom_smooth(method = "loess")
 plot(p)
 
@@ -299,10 +300,10 @@ plot(g)
 
 #Y= DELTA_CD4_S52, X=Creatinina S24
 theme_set(theme_light())
-g <- ggplot(vih_data, aes(y=CD4porcentajeS52, x=CreatininaS24)) +
+g <- ggplot(vih_data, aes(y=Delta_CD4_year1, x=CreatininaS24)) +
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21) + 
-        labs(x="Creatinine (Week 24)", y=" % CD4 (Year 1)") +
+        labs(x="Creatinine (Week 24)", y=" Delta CD4 week 52") +
         theme(text = element_text(face="bold", size = 18)) +
         geom_smooth(method = "lm")
 plot(g)
@@ -310,7 +311,7 @@ plot(g)
 ## CreatininaS0
 theme_set(theme_light())
 g <- ggplot(vih_data, 
-            aes(y=CD4porcentajeS52, x=CreatininaS0)) +
+            aes(y=Delta_CD4_year1, x=CreatininaS0)) +
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21) + 
         labs(x="Creatinine (Week 0)", y=" % CD4 (Year 1)") +
@@ -333,6 +334,55 @@ g <- ggplot(creatinina.m, aes(x=variable, y=value)) +
         labs(x="Week", y="Creatinine levels") +
         theme(text = element_text(face="bold", size = 18))
 plot(g)
+
+##########################################################################
+## leave-one-out validation LASSO
+
+## binarizing IRIS
+wwiris <- sapply(vih_data$with_without_IRIS, 
+                 function(x) ifelse(x=="with","IRIS","No symptoms")) 
+
+## processing data for lasso
+input <- vih_data[, ! sapply(vih_data, function(x) class(x)=="character") ]
+input <- select(input, -Delta_CD4_year1)
+input <- select(input, -CD4_S0)
+input <- select(input, -CD4_S52)
+input <- as.matrix(input)
+str(input)
+head(input)
+write.table(input, "../data/model_matrix.tsv", sep = "\t")
+str(input)
+output <- vih_data$Delta_CD4_year1
+
+## vector to store predictions
+res <- numeric(nrow(input))
+
+## matrix to store lasso coefficients
+lasso_coefs <- matrix(0, nrow(input), ncol(input)+1)
+
+## perform leave-one-out validation
+for (i in 1:nrow(input)) {
+        lambda.cv <- cv.glmnet(x=input[-i,], y = output[-i])$lambda.1se
+        lasso <- glmnet(x=input[-i,], y = output[-i], lambda = lambda.cv)
+        prediction <- predict(lasso, newx = input, type = "response", s = lambda.cv)
+        res[i] <- prediction[i]
+        lasso_coefs[i,] <- as.vector(coef(lasso)) 
+}
+
+## plot predicted vs target values
+validation <- data.frame("lasso_prediction"=res,
+                         "values"=output,
+                         "iris"=as.factor(wwiris))
+theme_set(theme_light())
+p <- ggplot(validation, aes(x=values, y=lasso_prediction, color= iris)) + 
+        geom_point(size= 2.5) +
+        scale_colour_manual(values=c("green", "black")) +
+        geom_abline(slope = 1, size=1, colour="red") +
+        labs(x="Delta TCD4 values", y="LASSO") +
+        theme(legend.position = c(0.15, 0.85)) +            ## change legend position
+        theme(legend.title = element_blank())  +           ## remove legend title
+        theme(text = element_text(face="bold", size = 18))
+plot(p)
 
 
 
