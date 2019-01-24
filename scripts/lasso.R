@@ -25,7 +25,7 @@ str(input)
 output <- vih_data$Delta_CD4_year1
 
 ######################################################################################
-## leave-one-out validation
+## leave-one-out validation LASSO
 
 ## vector to store predictions
 res <- numeric(nrow(input))
