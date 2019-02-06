@@ -303,7 +303,7 @@ theme_set(theme_light())
 g <- ggplot(vih_data, aes(y=Delta_CD4_year1, x=CreatininaS24)) +
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21) + 
-        labs(x="Creatinine (Week 24)", y=" Delta CD4 week 52") +
+        labs(x="Creatinine Week 24", y=" Delta CD4 Week 52") +
         theme(text = element_text(face="bold", size = 18)) +
         geom_smooth(method = "lm")
 plot(g)
@@ -314,7 +314,7 @@ g <- ggplot(vih_data,
             aes(y=Delta_CD4_year1, x=CreatininaS0)) +
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21) + 
-        labs(x="Creatinine (Week 0)", y=" % CD4 (Year 1)") +
+        labs(x="Creatinine Week 0", y="Delta CD4 Week 52") +
         theme(text = element_text(face="bold", size = 18)) +
         geom_smooth(method = "lm")
 plot(g)
@@ -326,11 +326,11 @@ plot(g)
 creatinina <- select(vih_data, CreatininaS0, CreatininaS24)
 names(creatinina) <- c("0", "24")
 creatinina.m <- melt(creatinina)
-creatinina.m
+creatinina.m$"PairNumber" <- rep(seq(1,nrow(creatinina.m)/2),2)
 
 g <- ggplot(creatinina.m, aes(x=variable, y=value)) + 
-        geom_boxplot() + 
-        geom_jitter(position = position_jitter(0.3)) +
+        geom_point() +
+        geom_line(aes(group = PairNumber)) +
         labs(x="Week", y="Creatinine levels") +
         theme(text = element_text(face="bold", size = 18))
 plot(g)
