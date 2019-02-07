@@ -3,6 +3,7 @@ library(glmnet)
 library(dplyr)
 library(ggplot2)
 library(reshape2)
+library(corrplot)
 
 
 ##################################################################################
@@ -384,5 +385,55 @@ p <- ggplot(validation, aes(x=values, y=lasso_prediction, color= iris)) +
         theme(text = element_text(face="bold", size = 18))
 plot(p)
 
+################################################################################################
 
+## prereading data
+tabla <- read.csv("../data/TablaCompletaCohorteINER_C08-04_20180810.csv",
+                  stringsAsFactors = FALSE)
+str(tabla)
+dim(tabla)
 
+## select variables possible related to cretinine
+creatinine_rel <- select(tabla, 
+                         IL18_pg_ml, 
+                         LPS_pg_ml_W0, 
+                         IL1betapg_ml_W0,
+                         TNFalfa_pg_ml_W0, 
+                         IL6pg_ml_W0, 
+                         IL12p70_pg_ml,
+                         IL18_pg_ml,
+                         TGO_S0,
+                         TGP_S0,
+                         LDH__S0,
+                         Bili_totS0,
+                         Bili_indS0,
+                         Fosf_alcS24,
+                         Fosf__alcS0,
+                         AlbuminaS0,
+                         IMC_S0,
+                         CreatininaS0,
+                         CreatininaS24,
+                         LDH__S0)
+creatinine_rel$IL18_pg_ml <- as.numeric(creatinine_rel$IL18_pg_ml)
+creatinine_rel$LPS_pg_ml_W0 <- as.numeric(gsub(",", "", creatinine_rel$LPS_pg_ml_W0))
+str(creatinine_rel)
+
+## plot correlation between variables
+creatinine.r <- creatinine_rel[complete.cases(creatinine_rel),]
+cor_vars <- cor(creatinine.r)
+heatmap(cor_vars)
+corrplot(cor_vars, 
+         method = "circle",
+         type="upper",
+         diag = FALSE,
+         order="hclust",
+         tl.col="black",    ## label color
+         tl.srt=45)         ## column label angle
+
+## linear regression on creatinine values
+linMod <- lm(CreatininaS24~., data = creatinine.r)
+pred <- predict(linMod, newdata = creatinine.r) 
+plot(creatinine.r$CreatininaS24, pred)
+abline(0,1, col="red")
+
+summary(linMod)
