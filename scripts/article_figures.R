@@ -393,7 +393,23 @@ tabla <- read.csv("../data/TablaCompletaCohorteINER_C08-04_20180810.csv",
 str(tabla)
 dim(tabla)
 
-## select variables possible related to cretinine
+## computes p-values for pair-wise variable correlations
+cor.mtest <- function(mat, ...) {
+        mat <- as.matrix(mat)
+        n <- ncol(mat)
+        p.mat<- matrix(NA, n, n)
+        diag(p.mat) <- 0
+        for (i in 1:(n - 1)) {
+                for (j in (i + 1):n) {
+                        tmp <- cor.test(mat[, i], mat[, j], ...)
+                        p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+                }
+        }
+        colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+        p.mat
+}
+
+## select variables possible related to creatinine
 creatinine_rel <- select(tabla, 
                          IL18_pg_ml, 
                          LPS_pg_ml_W0, 
@@ -421,8 +437,15 @@ str(creatinine_rel)
 ## plot correlation between variables
 creatinine.r <- creatinine_rel[complete.cases(creatinine_rel),]
 cor_vars <- cor(creatinine.r)
+
+## calculate p-values
+pvals <- cor.mtest(creatinine.r)
+
 heatmap(cor_vars)
 corrplot(cor_vars, 
+         p.mat = pvals,
+         insig = "p-value", 
+         sig.level = -1,
          method = "circle",
          type="upper",
          diag = FALSE,
@@ -430,10 +453,19 @@ corrplot(cor_vars,
          tl.col="black",    ## label color
          tl.srt=45)         ## column label angle
 
-## linear regression on creatinine values
-linMod <- lm(CreatininaS24~., data = creatinine.r)
-pred <- predict(linMod, newdata = creatinine.r) 
-plot(creatinine.r$CreatininaS24, pred)
-abline(0,1, col="red")
 
-summary(linMod)
+corrplot(cor_vars, 
+         p.mat = pvals,
+         sig.level = c(.001, .01, .05), 
+         pch.cex = 1.25,
+         cl.cex = 1.25,
+         tl.cex = 1.25,
+         insig = "label_sig", 
+         pch.col = "white",
+         method = "circle",
+         type="upper",
+         diag = FALSE,
+         order="hclust",
+         tl.col="black",    ## label color
+         tl.srt=45)         ## column label angle
+
