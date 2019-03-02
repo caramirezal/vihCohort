@@ -513,3 +513,9 @@ corrplot(cor_vars,
          order="hclust",
          tl.col="black",    ## label color
          tl.srt=45)         ## column label angle
+
+########################################################################################################################
+
+sheet <- gs_title("67patientsAllVariables_20190228CRA")
+basales <- gs_read(sheet)
+
