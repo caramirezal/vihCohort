@@ -516,6 +516,38 @@ corrplot(cor_vars,
 
 ########################################################################################################################
 
-sheet <- gs_title("67patientsAllVariables_20190228CRA")
+sheet <- gs_title("67lassoPatients_AllVariables_20190303")
 basales <- gs_read(sheet)
+head(basales)
+str(basales)
 
+nb_is_na <- sapply(basales, function(x) sum(!is.na(x)))
+selected_vars <- nb_is_na > 40
+selected_vars <- names(basales)[selected_vars]
+selected_vars
+basales_sel <- basales[, selected_vars]
+basales_sel <- basales_sel[complete.cases(basales_sel),]
+
+basales_cor <- cor(basales_sel)
+basales_pvals <- cor.mtest(basales_sel)
+
+labels_sheet <- gs_title("Traducción de variables")
+labels <- gs_read(labels_sheet)
+
+names_sel <- names(basales_sel)
+select(labels, names_sel %in% name)
+
+corrplot(basales_cor, 
+         p.mat = basales_pvals,
+         sig.level = c(.001, .01, .05), 
+         pch.cex = 0.5,
+         cl.cex = 1.25,
+         tl.cex = 0.7,
+         insig = "label_sig", 
+         pch.col = "white",
+         method = "circle",
+         type="upper",
+         diag = FALSE,
+         order="hclust",
+         tl.col="black",    ## label color
+         tl.srt=90)         ## column label angle
