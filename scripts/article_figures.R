@@ -389,18 +389,11 @@ plot(p)
 ################################################################################################
 Sys.setlocale('LC_ALL','C') ## fix non english characters error
 
-ssheet <- gs_title("Heat map labels")
-heatmap_labels <- gs_read(ssheet)
-heatmap_labels <- heatmap_labels[,c("Dice", "Debe decir")]
-head(heatmap_labels)
+ssheet <- gs_title("Para heat map")
+basal <- gs_read(ssheet, ws = "Data")
+labels <- gs_read(ssheet, ws="Labels", col_names=FALSE)
+names(labels) <- c("var_names","labels")
 
-recover <- gs_read(ssheet)
-
-write.table(heatmap_labels, row.names = "")
-
-## prereading data
-tabla <- read.csv("../data/TablaCompletaCohorteINER_C08-04_20180810.csv",
-                  stringsAsFactors = FALSE)
 
 ## computes p-values for pair-wise variable correlations
 cor.mtest <- function(mat, ...) {
@@ -418,66 +411,30 @@ cor.mtest <- function(mat, ...) {
         p.mat
 }
 
-head(tabla[, heatmap_labels$Dice])
-
-## select variables possible related to creatinine
-creatinine_rel <- select(tabla, 
-                         IL18_pg_ml, 
-                         LPS_pg_ml_W0, 
-                         IL1betapg_ml_W0,
-                         TNFalfa_pg_ml_W0, 
-                         IL6pg_ml_W0, 
-                         IL12p70_pg_ml,
-                         IL18_pg_ml,
-                         TGO_S0,
-                         TGP_S0,
-                         LDH__S0,
-                         Bili_totS0,
-                         Bili_indS0,
-                         Fosf_alcS24,
-                         Fosf__alcS0,
-                         AlbuminaS0,
-                         IMC_S0,
-                         CreatininaS0,
-                         CreatininaS24)
-creatinine_rel$IL18_pg_ml <- as.numeric(creatinine_rel$IL18_pg_ml)
-creatinine_rel$LPS_pg_ml_W0 <- as.numeric(gsub(",", "", creatinine_rel$LPS_pg_ml_W0))
-str(creatinine_rel)
-
-creatinine_rel <- rename(creatinine_rel,
-                         Basal_plasma_IL8=IL18_pg_ml,
-                         Basal_plasma_LPS=LPS_pg_ml_W0, 
-                         Basal_plasma_IL1beta=IL1betapg_ml_W0,
-                         Basal_plasma_TNFa=TNFalfa_pg_ml_W0,
-                         Basal_plasma_IL6=IL6pg_ml_W0,
-                         Basal_plasma_IL12=IL12p70_pg_ml,
-                         Basal_plasma_IL8=IL18_pg_ml,
-                         Basal_serum_GOT=TGO_S0,
-                         Basal_serum_GPT=TGP_S0,
-                         Basal_LDH=LDH__S0,
-                         Basal_total_serum_bilirubin=Bili_totS0,
-                         Basal_indirect_serum_bilirubin=Bili_indS0,
-                         Basal_serum_AP=Fosf__alcS0,
-                         Week_24_serum_AP=Fosf_alcS24,
-                         Basal_serum_albumin=AlbuminaS0,
-                         Basal_BWI=IMC_S0,
-                         Basal_creatinine=CreatininaS0,
-                         Week_24_creatinine=CreatininaS24)
-names(creatinine_rel) <- gsub("_", " ", names(creatinine_rel))
-
+basal.m <- as.matrix(basal)
+names(basal.m) <- labels$labels
 
 ## plot correlation between variables
-creatinine.r <- creatinine_rel[complete.cases(creatinine_rel),]
-cor_vars <- cor(creatinine.r)
+cor_vars <- cor(basal.m, use = "complete.obs", method = "spearman")
+heatmap(cor_vars, cexRow = 0.5, labCol = FALSE)
+corrplot(cor_vars, 
+         method = "circle",
+         type="upper",
+         diag = FALSE,
+         order="hclust",
+         tl.col="black",    ## label color
+         tl.srt=90,
+         tl.cex = 0.45,
+         pch.cex = 10,
+         tl.pos = "td")
 
 ## saving correlations table
-rownames(cor_vars) <- colnames(cor_vars)
 write.table(cor_vars, 
             "../data/correlations.tsv", 
             sep = "\t")
 
 ## calculate p-values
-pvals <- cor.mtest(creatinine.r)
+pvals <- cor.mtest(basal, method="spearman")
 
 
 ## saving pvals
@@ -485,18 +442,6 @@ rownames(pvals) <- colnames(pvals)
 write.table(pvals, 
             "../data/pvals.tsv",
             sep = "\t")
-
-heatmap(cor_vars)
-corrplot(cor_vars, 
-         p.mat = pvals,
-         insig = "p-value", 
-         sig.level = -1,
-         method = "circle",
-         type="upper",
-         diag = FALSE,
-         order="hclust",
-         tl.col="black",    ## label color
-         tl.srt=45)         ## column label angle
 
 
 corrplot(cor_vars, 
@@ -516,7 +461,7 @@ corrplot(cor_vars,
 
 ########################################################################################################################
 
-sheet <- gs_title("67lassoPatients_AllVariables_20190303")
+sheet <- gs_title("Para heatmap")
 basales <- gs_read(sheet)
 head(basales)
 str(basales)
