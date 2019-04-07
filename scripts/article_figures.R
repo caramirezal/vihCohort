@@ -215,10 +215,10 @@ cd4.m <- mutate(cd4.m, variable=as.integer(as.character(variable)))
 
 ## plotting the data
 theme_set(theme_light())
-p <- ggplot(cd4.m, aes(x=variable, y=log10(value))) + 
+p <- ggplot(cd4.m, aes(x=variable, y=value)) + 
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21, alpha=0.3) + 
-        labs(x="Week", y="Log_10(CD4 T cells cells/mm^3 blood)") +
+        labs(x="Week", y="CD4 T cells cells/mm^3 blood") +
         theme(text = element_text(face="bold", size = 18)) +
         scale_x_continuous(breaks=c(0,8,12,24,39,52)) +     ## change ticks interval labels
         geom_smooth(method = "loess") 
@@ -334,7 +334,22 @@ g <- ggplot(creatinina.m, aes(x=variable, y=value)) +
         geom_point() +
         geom_line(aes(group = PairNumber)) +
         labs(x="Week", y="Creatinine levels") +
-        theme(text = element_text(face="bold", size = 18))
+        theme(text = element_text(face="bold", size = 22))
+plot(g)
+
+##############################################################################
+## CD4 % week 0 and 24 paired sample plot
+
+cd4 <- select(vih_data, CD4porcentajeS0, CD4porcentajeS24)
+names(cd4) <- c("0", "24")
+cd4.m <- melt(cd4)
+cd4.m$"PairNumber" <- rep(seq(1,nrow(cd4.m)/2),2)
+
+g <- ggplot(cd4.m, aes(x=variable, y=value)) + 
+        geom_point() +
+        geom_line(aes(group = PairNumber)) +
+        labs(x="Week", y="% CD4 T cells") +
+        theme(text = element_text(face="bold", size = 22))
 plot(g)
 
 ##########################################################################
@@ -461,38 +476,33 @@ corrplot(cor_vars,
 
 ########################################################################################################################
 
-sheet <- gs_title("Para heatmap")
-basales <- gs_read(sheet)
-head(basales)
+library(gplots)
+library(plyr)
+
+## LOading data
+sheet <- gs_title("Para heat map")
+basales <- gs_read(sheet, ws = "Data")
 str(basales)
 
-nb_is_na <- sapply(basales, function(x) sum(!is.na(x)))
-selected_vars <- nb_is_na > 40
-selected_vars <- names(basales)[selected_vars]
-selected_vars
-basales_sel <- basales[, selected_vars]
-basales_sel <- basales_sel[complete.cases(basales_sel),]
+## performing correlation calculation 
+basales_cor <- cor(basales, use = "complete.obs")
+basales_pvals <- cor.mtest(basales)
 
-basales_cor <- cor(basales_sel)
-basales_pvals <- cor.mtest(basales_sel)
+## Load factors to plot
+categories <- gs_read(sheet, ws="Labels", col_names=FALSE)
+categories <- select(categories, -X3) 
+names(categories) <- c("variable", "name", "category")
+assigned_colors <-  c(palette(), "brown", "steelblue", "violet", "pink", 
+                                "aquamarine", "darkgreen", "gold", "purple")
+categories <- mutate(categories, color=mapvalues(category, from=unique(categories$category), to=assigned_colors))
+str(categories)
 
-labels_sheet <- gs_title("Traducción de variables")
-labels <- gs_read(labels_sheet)
+write.table(categories, "../data/colors.tsv", sep="\t", row.names = FALSE)
+write.table(basales_cor, "../data/correlations.tsv", sep="\t", row.names = FALSE)
 
-names_sel <- names(basales_sel)
-select(labels, names_sel %in% name)
+heatmap.2(basales_cor, trace = "none", 
+          RowSideColors = categories$color, ColSideColors = categories$color, 
+          labCol=NA, labRow=NA, density.info = "none")
 
-corrplot(basales_cor, 
-         p.mat = basales_pvals,
-         sig.level = c(.001, .01, .05), 
-         pch.cex = 0.5,
-         cl.cex = 1.25,
-         tl.cex = 0.7,
-         insig = "label_sig", 
-         pch.col = "white",
-         method = "circle",
-         type="upper",
-         diag = FALSE,
-         order="hclust",
-         tl.col="black",    ## label color
-         tl.srt=90)         ## column label angle
+
+
