@@ -449,7 +449,7 @@ write.table(cor_vars,
             sep = "\t")
 
 ## calculate p-values
-pvals <- cor.mtest(basal, method="spearman")
+pvals <- cor.mtest(basal, method="spearman", alternative="two.sided")
 
 
 ## saving pvals
