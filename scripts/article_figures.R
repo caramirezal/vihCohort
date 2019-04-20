@@ -478,9 +478,10 @@ corrplot(cor_vars,
 
 library(gplots)
 library(plyr)
+library(dplyr)
 
 ## LOading data
-sheet <- gs_title("Para heat map")
+sheet <- gs_title("Para heat map 20190416")
 basales <- gs_read(sheet, ws = "Data")
 str(basales)
 
@@ -492,17 +493,19 @@ basales_pvals <- cor.mtest(basales)
 categories <- gs_read(sheet, ws="Labels", col_names=FALSE)
 categories <- select(categories, -X3) 
 names(categories) <- c("variable", "name", "category")
-assigned_colors <-  c(palette(), "brown", "steelblue", "violet", "pink", 
-                                "aquamarine", "darkgreen", "gold", "purple")
+assigned_colors <-  c("black", "blue", "brown", "yellow", 
+                      "cyan", "magenta", "green", "gray", 
+                      "red", "steelblue", "orange")
 categories <- mutate(categories, color=mapvalues(category, from=unique(categories$category), to=assigned_colors))
 str(categories)
 
 write.table(categories, "../data/colors.tsv", sep="\t", row.names = FALSE)
 write.table(basales_cor, "../data/correlations.tsv", sep="\t", row.names = FALSE)
 
+
 heatmap.2(basales_cor, trace = "none", 
           RowSideColors = categories$color, ColSideColors = categories$color, 
-          labCol=NA, labRow=NA, density.info = "none")
+          labCol=NA, labRow=NA)
 
 
 
