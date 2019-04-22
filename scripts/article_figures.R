@@ -496,7 +496,9 @@ names(categories) <- c("variable", "name", "category")
 assigned_colors <-  c("black", "blue", "brown", "yellow", 
                       "cyan", "magenta", "green", "gray", 
                       "red", "steelblue", "orange")
-categories <- mutate(categories, color=mapvalues(category, from=unique(categories$category), to=assigned_colors))
+categories <- mutate(categories, color=mapvalues(category, 
+                                                 from=unique(categories$category), 
+                                                 to=assigned_colors))
 str(categories)
 
 write.table(categories, "../data/colors.tsv", sep="\t", row.names = FALSE)
