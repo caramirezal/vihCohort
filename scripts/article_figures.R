@@ -479,6 +479,7 @@ corrplot(cor_vars,
 library(gplots)
 library(plyr)
 library(dplyr)
+library(googlesheets)
 
 ## LOading data
 sheet <- gs_title("Para heat map 20190416")
@@ -487,27 +488,29 @@ str(basales)
 
 ## performing correlation calculation 
 basales_cor <- cor(basales, use = "complete.obs")
-basales_pvals <- cor.mtest(basales)
+#basales_pvals <- cor.mtest(basales)
 
-## Load factors to plot
-categories <- gs_read(sheet, ws="Labels", col_names=FALSE)
-categories <- select(categories, -X3) 
-names(categories) <- c("variable", "name", "category")
-assigned_colors <-  c("black", "blue", "brown", "yellow", 
-                      "cyan", "magenta", "green", "gray", 
-                      "red", "steelblue", "orange")
-categories <- mutate(categories, color=mapvalues(category, 
-                                                 from=unique(categories$category), 
-                                                 to=assigned_colors))
+## Load labels and colors
+categories <- gs_read(sheet, ws="colors")
 str(categories)
+unique(categories$Color)
+## check de color-name
+sum(categories$Name == colnames(basales_cor)) ## column variables and colors are not in the same order
+categories_sort <- arrange(categories, Variable) ## sort categories
+basales_cor_sort <- basales_cor[sort(colnames(basales_cor)), sort(colnames(basales_cor))]
+categories_sort <- mutate(categories_sort, cat_int= paste(Category, Intensity, sep = " "))
+color_indexes <- order(unique(categories_sort$cat_int))
+color_ord_legend <- unique(categories_sort$Color)[color_indexes]
 
-write.table(categories, "../data/colors.tsv", sep="\t", row.names = FALSE)
-write.table(basales_cor, "../data/correlations.tsv", sep="\t", row.names = FALSE)
-
-
-heatmap.2(basales_cor, trace = "none", 
-          RowSideColors = categories$color, ColSideColors = categories$color, 
-          labCol=NA, labRow=NA)
+par(mar=c(0, 1, 0, 0))
+heatmap.2(basales_cor_sort, trace = "none",
+          RowSideColors = categories_sort$Color, ColSideColors = categories_sort$Color, 
+          labCol=NA, labRow=NA, density.info = "none", key = FALSE)
+#coords <- locator(1)
+#coords
+legend(-0.03,0.985, legend = unique(categories_sort$cat_int)[color_indexes], 
+       col= color_ord_legend, 
+       lty = 5, lwd = 5, cex = 0.56, box.lty = 0, text.font = 2)
 
 
 
