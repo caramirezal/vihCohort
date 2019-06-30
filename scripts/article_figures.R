@@ -1,10 +1,16 @@
 ## Construction of the figures for the article
+setwd("~/scripts/vihCohort/scripts/")
 library(glmnet)
 library(dplyr)
 library(ggplot2)
 library(reshape2)
 library(corrplot)
 library(googlesheets)
+library(forcats)
+library(gplots)
+library(plyr)
+library(pheatmap)
+library(heatmap3)
 
 
 ##################################################################################
@@ -70,6 +76,8 @@ names(cv) <- gsub("CV_S", "", names(cv))
 cv.m <- melt(cv)
 cv.m <- cv.m[complete.cases(cv.m),]
 cv.m <- mutate(cv.m, variable=as.integer(as.character(variable)))
+cv.m <- filter(cv.m, variable!=4)
+cv.m <- mutate(cv.m, variable=as.vector(variable))
 
 theme_set(theme_light())
 p <- ggplot(cv.m, aes(x=variable, y=log10(value))) + 
@@ -77,7 +85,7 @@ p <- ggplot(cv.m, aes(x=variable, y=log10(value))) +
                    size= 2.5, pch=21, alpha=0.3) + 
         labs(x="Week", y=" Log_10(HIV RNA copies/mL)") +
         theme(text = element_text(face="bold", size = 18)) +
-        scale_x_continuous(breaks=c(0,4,8,12,24,39,52,104)) +     ## change ticks interval labels
+        scale_x_continuous(breaks=c(0,8,12,24,39,52,104)) +     ## change ticks interval labels
         geom_smooth()
 plot(p)
 
@@ -122,10 +130,10 @@ for (i in 1:nrow(input)) {
 validation <- data.frame("lasso_prediction"=res,
                          "values"=output)
 theme_set(theme_light())
-p <- ggplot(validation, aes(x=values, y=lasso_prediction)) + 
+p <- ggplot(validation, aes(x=lasso_prediction, y=values)) + 
         geom_point(colour="steelblue", size= 2.5) + 
         geom_abline(slope = 1,colour="red",size=1) +
-        labs(x="Delta TCD4 values", y="LASSO") +
+        labs(x="LASSO", y="Delta TCD4 values") +
         theme(text = element_text(face="bold", size = 18))
 plot(p)
 jpeg("../figures/lasso_plus_iris.jpeg")
@@ -141,6 +149,37 @@ summary_coefs <- data.frame("coefficient"=colnames(lasso_coefs),
                             "sd"=sd_coef)     %>%
                                       arrange(desc(abs(mean)))
 write.csv(summary_coefs, "../data/lasso_only_numeric_plus_iris.csv", row.names=FALSE)
+
+#####################################################################################
+## Bar graph of the top 20 variables ranked by LASSO
+sheet <- gs_title("Para heat map 20190416")
+
+labels.df <- gs_read(sheet, ws="Labels", col_names=FALSE)
+labels <- labels.df$X4
+labels
+
+## load LASSO coeficients
+coefs <- read.csv("../data/lasso_only_numeric.csv", 
+                  stringsAsFactors = FALSE)
+## drop intercept coeficient
+coefs <- filter(coefs, coefficient != "(Intercept)")
+coefs <- mutate(coefs, coefficient=plyr::mapvalues(coefs$coefficient,
+                                                   from=labels.df$X1,
+                                                   to=labels.df$X4))
+
+theme_set(theme_light())
+coefs[1:20,] %>% 
+        mutate(coefficient= fct_reorder(coefficient, log(abs(mean)+1))) %>%
+        ggplot(aes(x=coefficient, y=log(abs(mean)+1))) +
+           geom_bar(stat="identity") +
+           coord_flip() +
+           xlab("") +
+           theme(legend.position = "None",
+                 axis.title.x = element_blank(),
+                 axis.text.y = element_text(face="bold", size=10))
+
+coefs.ord <- arrange(coefs[1:35,], desc(abs(mean))) 
+ggplot(data=coefs.ord, aes(x=coefficient, y=log(abs(mean)))) + geom_bar(stat="identity")
 
 #####################################################################################
 ## 3. Linear regression model on top 20 variables with highest coeficiente in LASSO 
@@ -187,7 +226,7 @@ theme_set(theme_light())
 g <- ggplot(res, aes(x=value, y=prediction, color=as.factor(iris))) + 
         scale_color_manual(values = c("green", "black")) +    ## adjust point color manually
         geom_point(size= 2.5) + 
-        labs(x="True Value", y="Prediction") +
+        labs(x="Predicted value", y="Delta TCD4 values") +
         theme(text = element_text(face="bold", size = 18)) +
         theme(legend.position = c(0.16, 0.85)) +            ## change legend position
         theme(legend.title = element_blank())  +           ## remove legend title
@@ -475,13 +514,7 @@ corrplot(cor_vars,
          tl.srt=45)         ## column label angle
 
 ########################################################################################################################
-
-library(gplots)
-library(plyr)
-library(dplyr)
-library(googlesheets)
-
-## LOading data
+## Loading data
 sheet <- gs_title("Para heat map 20190416")
 basales <- gs_read(sheet, ws = "Data")
 str(basales)
@@ -495,22 +528,68 @@ categories <- gs_read(sheet, ws="colors")
 str(categories)
 unique(categories$Color)
 ## check de color-name
-sum(categories$Name == colnames(basales_cor)) ## column variables and colors are not in the same order
-categories_sort <- arrange(categories, Variable) ## sort categories
+sum(categories$Abreviated_name != colnames(basales_cor)) ## column variables and colors are not in the same order
+categories_sort <- arrange(categories, 
+                           Abreviated_name) ## sort categories
 basales_cor_sort <- basales_cor[sort(colnames(basales_cor)), sort(colnames(basales_cor))]
-categories_sort <- mutate(categories_sort, cat_int= paste(Category, Intensity, sep = " "))
+categories_sort <- mutate(categories_sort, 
+                          cat_int= paste(Category, Intensity, sep = " "))
 color_indexes <- order(unique(categories_sort$cat_int))
 color_ord_legend <- unique(categories_sort$Color)[color_indexes]
 
-par(mar=c(0, 1, 0, 0))
+
+ann_df <- data.frame(group=categories_sort$cat_int)
+rownames(ann_df) <- colnames(basales_cor_sort)
+ann_df
+
+color_map <- unique(select(categories_sort, cat_int, Color))
+color_map
+var_colors <- color_map$Color
+var_colors
+names(var_colors) <- color_map$cat_int
+colors <- list(group=var_colors)
+colors
+
+## pheatmap version. Column color coded
+pheatmap(
+        basales_cor_sort, 
+        cutree_cols = 4,
+        show_rownames = FALSE,                  
+        color = colorpanel(30, "yellow", "blue"),
+        fontsize = 7.5, 
+        annotation_col = ann_df,
+        annotation_colors = colors,
+        annotation_names_col = FALSE     ## hide color matrix legend
+)
+
+library(dendextend)
+
+## Heatmap implementation with complexHeatmap Library
+row_dend = hclust(dist(basales_cor_sort)) # row clustering
+col_dend = hclust(dist(t(basales_cor_sort))) # column clustering
+Heatmap(basales_cor_sort,
+        cluster_rows = color_branches(row_dend, k = 3),
+        cluster_columns = color_branches(col_dend, k = 3))
+
+## plot heatmap
+par(mar=c(7, 1, 0, 0))
+tags <- unique(categories_sort$cat_int)[color_indexes]
+tags[1] <- "Age"      ## change Age normal
+jpeg("../figures/heatmap_v2.jpg")
 heatmap.2(basales_cor_sort, trace = "none",
           RowSideColors = categories_sort$Color, ColSideColors = categories_sort$Color, 
-          labCol=NA, labRow=NA, density.info = "none", key = FALSE)
-#coords <- locator(1)
+          labRow=NA, density.info = "none", key = FALSE, margins=c(12,8), cexCol = 1)
+#coords <- locator(1)     ## locates coordinates in the heatmap using cursor
 #coords
-legend(-0.03,0.985, legend = unique(categories_sort$cat_int)[color_indexes], 
-       col= color_ord_legend, 
-       lty = 5, lwd = 5, cex = 0.56, box.lty = 0, text.font = 2)
 
+legend(.01, 0.99, legend = tags, 
+       col= color_ord_legend, 
+       lty = 5, lwd = 5, cex = 0.58, box.lty = 0, text.font = 2)
+dev.off()
+
+## heatmap with column and row labels (difficult to see)
+heatmap.2(basales_cor_sort, trace = "none",
+          RowSideColors = categories_sort$Color, ColSideColors = categories_sort$Color, 
+          density.info = "none")
 
 
