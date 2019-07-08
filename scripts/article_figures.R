@@ -78,6 +78,7 @@ cv.m <- cv.m[complete.cases(cv.m),]
 cv.m <- mutate(cv.m, variable=as.integer(as.character(variable)))
 cv.m <- filter(cv.m, variable!=4)
 cv.m <- mutate(cv.m, variable=as.vector(variable))
+cv.m <- filter(cv.m, variable != 104)
 
 theme_set(theme_light())
 p <- ggplot(cv.m, aes(x=variable, y=log10(value))) + 
@@ -85,7 +86,7 @@ p <- ggplot(cv.m, aes(x=variable, y=log10(value))) +
                    size= 2.5, pch=21, alpha=0.3) + 
         labs(x="Week", y=" Log_10(HIV RNA copies/mL)") +
         theme(text = element_text(face="bold", size = 18)) +
-        scale_x_continuous(breaks=c(0,8,12,24,39,52,104)) +     ## change ticks interval labels
+        scale_x_continuous(breaks=c(0,8,12,24,39,52)) +     ## change ticks interval labels
         geom_smooth()
 plot(p)
 
@@ -210,10 +211,10 @@ preds <- predict(lModel, newdata = input)
 ## plot without coloured IRIS patients
 res <- data.frame("value"= vih_data$output, "prediction"= preds)
 theme_set(theme_light())
-g <- ggplot(res, aes(x=value, y=prediction)) + 
+g <- ggplot(res, aes(x=prediction, y=value)) + 
         geom_point(fill="black", colour="white", 
                    size= 2.5, pch=21, alpha=0.9) + 
-        labs(x="True Value", y="Prediction") +
+        labs(x="Predicted value", y="Del TCD4 values") +
         theme(text = element_text(face="bold", size = 18)) +
         geom_smooth(method = "lm")
 plot(g)
@@ -221,9 +222,11 @@ plot(g)
 ## plot with coloured IRIS patients
 with_without_IRIS <- sapply(vih_data$with_without_IRIS, 
                             function(x) ifelse(x=="with", "IRIS", "no symptoms"))
-res <- data.frame("value"= vih_data$output, "prediction"= preds, "iris"=with_without_IRIS)
+res <- data.frame("value"= vih_data$output, 
+                  "prediction"= preds, 
+                  "iris"=with_without_IRIS)
 theme_set(theme_light())
-g <- ggplot(res, aes(x=value, y=prediction, color=as.factor(iris))) + 
+g <- ggplot(res, aes(x=prediction, y=value, color=as.factor(iris))) + 
         scale_color_manual(values = c("green", "black")) +    ## adjust point color manually
         geom_point(size= 2.5) + 
         labs(x="Predicted value", y="Delta TCD4 values") +
@@ -434,7 +437,7 @@ p <- ggplot(validation, aes(x=values, y=lasso_prediction, color= iris)) +
         geom_point(size= 2.5) +
         scale_colour_manual(values=c("green", "black")) +
         geom_abline(slope = 1, size=1, colour="red") +
-        labs(x="Delta TCD4 values", y="LASSO") +
+        labs(y="Delta TCD4 values", x="LASSO") +
         theme(legend.position = c(0.15, 0.85)) +            ## change legend position
         theme(legend.title = element_blank())  +           ## remove legend title
         theme(text = element_text(face="bold", size = 18))
@@ -528,48 +531,29 @@ categories <- gs_read(sheet, ws="colors")
 str(categories)
 unique(categories$Color)
 ## check de color-name
-sum(categories$Abreviated_name != colnames(basales_cor)) ## column variables and colors are not in the same order
-categories_sort <- arrange(categories, 
-                           Abreviated_name) ## sort categories
+sum(categories$Abreviated_name == colnames(basales_cor)) ## column variables and colors are not in the same order
+categories_sort <- arrange(categories, Abreviated_name) ## sort categories
 basales_cor_sort <- basales_cor[sort(colnames(basales_cor)), sort(colnames(basales_cor))]
-categories_sort <- mutate(categories_sort, 
-                          cat_int= paste(Category, Intensity, sep = " "))
+categories_sort <- mutate(categories_sort, cat_int= paste(Category, Intensity, sep = " "))
 color_indexes <- order(unique(categories_sort$cat_int))
 color_ord_legend <- unique(categories_sort$Color)[color_indexes]
 
-
-ann_df <- data.frame(group=categories_sort$cat_int)
-rownames(ann_df) <- colnames(basales_cor_sort)
-ann_df
-
-color_map <- unique(select(categories_sort, cat_int, Color))
-color_map
-var_colors <- color_map$Color
-var_colors
-names(var_colors) <- color_map$cat_int
-colors <- list(group=var_colors)
-colors
-
-## pheatmap version. Column color coded
-pheatmap(
-        basales_cor_sort, 
-        cutree_cols = 4,
-        show_rownames = FALSE,                  
-        color = colorpanel(30, "yellow", "blue"),
-        fontsize = 7.5, 
-        annotation_col = ann_df,
-        annotation_colors = colors,
-        annotation_names_col = FALSE     ## hide color matrix legend
-)
+pheatmap(basales_cor_sort, 
+         cutree_cols = 3,
+         show_rownames = FALSE,
+         cluster_cols = TRUE,
+         color = colorpanel(30,"yellow","red"))
 
 library(dendextend)
+library(ComplexHeatmap)
 
 ## Heatmap implementation with complexHeatmap Library
 row_dend = hclust(dist(basales_cor_sort)) # row clustering
 col_dend = hclust(dist(t(basales_cor_sort))) # column clustering
 Heatmap(basales_cor_sort,
         cluster_rows = color_branches(row_dend, k = 3),
-        cluster_columns = color_branches(col_dend, k = 3))
+        cluster_columns = color_branches(col_dend, k = 3),
+        show_column_names = FALSE)
 
 ## plot heatmap
 par(mar=c(7, 1, 0, 0))
@@ -593,3 +577,10 @@ heatmap.2(basales_cor_sort, trace = "none",
           density.info = "none")
 
 
+############################################################################
+
+coefs <- read.table("../data/lasso_only_numeric.csv",
+                    header = TRUE,
+                    stringsAsFactors = FALSE,
+                    sep = ",")
+str(coefs)
