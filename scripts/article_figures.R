@@ -585,46 +585,29 @@ coefs <- read.table("../data/lasso_only_numeric.csv",
 str(coefs)
 
 ##################################################################################
+## Adaptative lasso implementation
 
-vih_data <- read.csv("../data/cleandata.csv", stringsAsFactors = FALSE)
-str(vih_data)
-## No NA values are presented in data
-dim(vih_data[!complete.cases(vih_data),])
-
-## processing data for lasso
-vih_data$with_without_IRIS <- sapply(vih_data$with_without_IRIS, 
-                                     function(x) ifelse(x=="with", 1, 0))
-input <- vih_data[, ! sapply(vih_data, function(x) class(x)=="character") ]
-input <- select(input, -Delta_CD4_year1)
-input <- select(input, -CD4_S0)
-input <- select(input, -CD4_S52)
-input <- as.matrix(input)
-str(input)
-head(input)
-write.table(input, "../data/model_matrix_plus_iris.tsv", sep = "\t")
-str(input)
-output <- vih_data$Delta_CD4_year1
-
-## vector to store predictions
-res <- numeric(nrow(input))
-
-## matrix to store lasso coefficients
-lasso_coefs <- matrix(0, nrow(input), ncol(input)+1)
-
-## perform leave-one-out validation
-for (i in 1:nrow(input)) {
-        lambda.cv <- cv.glmnet(x=input[-i,], y = output[-i])$lambda.1se
-        lasso <- glmnet(x=input[-i,], y = output[-i], lambda = lambda.cv)
-        prediction <- predict(lasso, newx = input, type = "response", s = lambda.cv)
-        res[i] <- prediction[i]
-        lasso_coefs[i,] <- as.vector(coef(lasso)) 
-}
-
-alasso1 <- glmnet(
+## Performing adaptative lasso
+alasso <- glmnet(
         x = input, 
         y = output,
         alpha = 1,
         penalty.factor = 1 / (1 + abs(lasso_coefs)) 
 )
 
-coef(alasso1) %>% head()
+## extracting and sorting lasso coefs 
+values <- coef(alasso) %>% rowSums 
+alasso.df <-  data.frame(
+        'variables' = names(values),
+        'value' = values
+)
+
+alasso.df %>% 
+        arrange(desc(abs(value))) %>%
+        write.table(file = '../data/alasso_coefs.tsv',
+                    row.names = FALSE,
+                    sep = '\t')
+
+###################################################################################
+## random forest implementation
+
