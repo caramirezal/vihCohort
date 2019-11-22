@@ -10,6 +10,7 @@ library(gplots)
 library(plyr)
 library(pheatmap)
 library(heatmap3)
+library(partykit)
 
 
 ##################################################################################
@@ -602,6 +603,7 @@ alasso.df <-  data.frame(
         'value' = values
 )
 
+## saving adapative lasso results
 alasso.df %>% 
         arrange(desc(abs(value))) %>%
         write.table(file = '../data/alasso_coefs.tsv',
@@ -610,4 +612,20 @@ alasso.df %>%
 
 ###################################################################################
 ## random forest implementation
+input <- data.frame(input)
+forest <- cforest(output~., data = input, )
+
+var_imp <- varimp(forest)
+cforest.df <- data.frame(
+        'variables' = names(var_imp),
+        'value' = var_imp, 
+        stringsAsFactors = FALSE
+)
+
+## saving random forest results
+cforest.df %>%
+        arrange(desc(value)) %>%
+        write.table(file = '../data/forest_var_imp.tsv',
+                    row.names = FALSE,
+                    sep = '\t')
 
