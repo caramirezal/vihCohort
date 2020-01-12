@@ -629,3 +629,16 @@ cforest.df %>%
                     row.names = FALSE,
                     sep = '\t')
 
+#####################################################################################
+## CD4 T cells are not correlated to Delta CD4
+fit <- lm(Delta_CD4_year1 ~ CD4_S52, data = vih_data)
+
+## Adding CD4 prediction
+fit.df <- mutate(vih_data, 
+                 prediction = predict(fit, newdata = vih_data)
+)
+
+theme_set(theme_light())
+ggplot(data = vih_data,
+       aes(x = CocCD4_CD8_S52, y = Delta_CD4_year1)) + 
+        geom_point() + geom_smooth(method = 'lm')
