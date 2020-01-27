@@ -1,0 +1,110 @@
+---
+title: "Model benchmark"
+author: "Ramirez C."
+date: "1/12/2020"
+output: 
+     html_document:
+       code_fold: 'hide'
+---
+
+
+## Regresión lineal Delta CD4 ~ CD4 T cells 
+
+```{r setting, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+## set ggplot options
+theme_set(theme_light())
+
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE)
+```
+
+```{r loading_data}
+## load cleaned data
+vih_data <- read.csv("../data/cleandata.csv", stringsAsFactors = FALSE)
+```
+
+```{r cd4_counts_vs_recovery}
+## CD4 T cells are not correlated to Delta CD4
+fit <- lm(Delta_CD4_year1 ~ CD4_S0, data = vih_data)
+fit.s <- summary(fit)
+fit.s
+```
+
+## Regresión lineal Top ten lasso ~ CD4 T cells
+
+```{r top_ten_lasso_vs_recovery}
+## Loading top 20 vars
+coefs <- read.csv("../data/lasso_only_numeric.csv", 
+                  stringsAsFactors = FALSE)
+## drop intercept coeficient
+coefs <- filter(coefs, coefficient != "(Intercept)")
+top20vars <- coefs$coefficient[1:20]
+
+## selecting CD4 increase variable as output for lm
+vih_data$"output" <- vih_data$Delta_CD4_year1
+
+## processing data for lasso
+input <- vih_data[, names(vih_data) %in% c(top20vars, "output")]
+
+## perform linear model
+lModel <- lm(output~., data = input)
+preds <- predict(lModel, newdata = input)
+
+y <- input$output
+input <- select(input, -output)
+
+preds <- numeric(nrow(input))
+## perform LOOC with linear model
+for (i in 1:nrow(input)){
+        ## Learning over n-1 samples
+        lModel <- lm(y[-i]~., data = input[-i, ])
+        preds[i] <- predict(lModel, newdata = input)[i]
+}
+
+## plot without coloured IRIS patients
+res <- data.frame("value"= vih_data$output, "prediction"= preds)
+
+lin_mod <- lm(value~prediction, res)
+lin_mod.s <- summary(lin_mod)
+lin_mod.s
+```
+
+```{r plots, fig.width=10}
+## cd4 ~ recovery
+cd4_counts <- ggplot(data = vih_data,
+                     aes(x = CD4_S0, y = Delta_CD4_year1)) + 
+                       geom_point() + 
+                       geom_smooth(method = 'lm') + 
+                       ylab('Delta TCD4 values') +
+                       xlab('Basal CD4 T cells') +
+                       theme(text = element_text(face="bold", size = 18))
+    
+## top ~ recovery
+top_ten <- ggplot(data = res,
+                     aes(x = prediction, y = value)) + 
+                       geom_point() + 
+                       geom_smooth(method = 'lm') + 
+                       ylab('Delta TCD4  values') +
+                       xlab('LASSO top 20') +
+                       theme(text = element_text(face="bold", size = 18))
+
+grid.arrange(top_ten, cd4_counts, nrow=1)
+```
+
+## Comparativa
+
+```{r}
+df <- data.frame('coef'=c(fit.s$coefficients[2,1], lin_mod.s$coefficients[2,1]),
+    'adjusted_R_sq' = c(fit.s$adj.r.squared, lin_mod.s$adj.r.squared),
+                 'F-statistic' = c(fit.s$fstatistic[1], lin_mod.s$fstatistic[1]),
+                 'p-val' = c(fit.s$coefficients[2,4], lin_mod.s$coefficients[2,4]),
+                 row.names = c('Basal CD4 T cells','Top 20 LASSO'))
+df
+```
+
+
+
